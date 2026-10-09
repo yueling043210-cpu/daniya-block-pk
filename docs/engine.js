@@ -126,36 +126,79 @@ export class BlockGame {
       next:this.next,score:this.score,lines:this.lines,level:this.level,ended:this.ended,elapsedMs:this.elapsedMs};
   }
 }
-// Daniya is a simulated opponent, not a second AI player.
-// A piece settles every 1.5-3 seconds. Scores rise in discrete, reproducible
-// game-like steps: a modest hard/soft drop, sometimes a 1- or 2-line clear.
-// This deterministic schedule is shared by the browser and score-verifying API.
-const BOT_SEED = 0xDA1A2026;
-export function botScoreEventsUntil(ms){
-  const limit=Math.min(3600000,Math.max(0,Number.isFinite(ms)?ms:0));
-  const rand=rand32(BOT_SEED);
+// Daniya is an explicitly simulated opponent, NOT an OpenClaw-controlled player.
+// PPS represents pieces placed each second, separate from the calm 1.5~3s score
+// updates. The 40-line sprint record is a SPEED benchmark, not a score record.
+export const BOT_DIFFICULTIES = Object.freeze({
+  easy:   Object.freeze({label:'简单', minPps:0.18, maxPps:0.30, seed:0xDA1A0101}),
+  medium: Object.freeze({label:'中等', minPps:0.46, maxPps:0.72, seed:0xDA1A0202}),
+  hard:   Object.freeze({label:'困难 · 世界级速度模拟', minPps:6.20, maxPps:6.80, seed:0xDA1A0303})
+});
+export const BOT_DIFFICULTY_NAMES = Object.freeze(Object.keys(BOT_DIFFICULTIES));
+const BOT_MAX_MS = 180000; // matches the maximum permitted server room duration
+const BOT_SCORES = [0,100,300,500,800]; // same level-1 line-clear table as BlockGame
+const cachedBotEvents=new Map();
+function buildBotEvents(difficulty){
+  const cfg=BOT_DIFFICULTIES[difficulty];
+  if(!Object.hasOwn(BOT_DIFFICULTIES,difficulty))throw new Error('Unknown bot difficulty');
+  const rand=rand32(cfg.seed);
   const events=[];
-  let at=0,score=0,pieces=0;
-  while(at<=limit){
-    // Random, but seeded: the score never changes between these checkpoints.
+  let at=0,score=0,totalPieces=0,totalLines=0;
+  let carry=0,fill=0,waitingLines=0;
+  let groupTarget=chooseGroup();
+  function chooseGroup(){
+    const q=rand();
+    if(difficulty==='easy') return q<0.91?1:2;
+    if(difficulty==='medium')return q<0.50?1:q<0.85?2:q<0.97?3:4;
+    return q<0.12?1:q<0.32?2:q<0.53?3:4;
+  }
+  while(true){
+    // Presentation ticks only; more than one piece can settle in a tick.
     const delay=1500+Math.floor(rand()*1501);
     at+=delay;
-    if(at>limit)break;
-    pieces++;
-    const hardDrop=8+2*Math.floor(rand()*12); // 8-30 (hard drop: 2 points/cell)
-    const softDrop=Math.floor(rand()*4);       // 0-3 (soft drop: 1 point/cell)
-    let clearBonus=0;
-    if(pieces%23===0)clearBonus=300;           // occasional two-line clear
-    else if(pieces%9===0)clearBonus=100;        // occasional single-line clear
-    const delta=hardDrop+softDrop+clearBonus;
+    if(at>BOT_MAX_MS)break;
+    const pps=cfg.minPps+(cfg.maxPps-cfg.minPps)*rand();
+    carry+=pps*delay/1000;
+    const settled=Math.floor(carry);carry-=settled;
+    let delta=0,clearBonus=0,clearedNow=0;
+    for(let i=0;i<settled;i++){
+      totalPieces++;
+      // Drop points use the player's 2/cell hard-drop + 1/cell soft-drop scale.
+      delta+=2*(4+Math.floor(rand()*12))+Math.floor(rand()*3);
+      // Approximate productive cell placements; a line needs 10 occupied cells.
+      const placement= difficulty==='easy' ? 2.25+0.50*rand()
+        : difficulty==='medium' ? 2.95+0.45*rand()
+        : 3.55+0.35*rand();
+      fill+=placement;
+      while(fill>=10){fill-=10;waitingLines++;}
+      while(waitingLines>=groupTarget){
+        const level=1+Math.floor(totalLines/10);
+        const earned=BOT_SCORES[groupTarget]*level;
+        delta+=earned;clearBonus+=earned;
+        waitingLines-=groupTarget;totalLines+=groupTarget;clearedNow+=groupTarget;
+        groupTarget=chooseGroup();
+      }
+    }
     score+=delta;
-    events.push({at,delta,score,clearBonus});
+    events.push({at,delta,score,clearBonus,settled,pieces:totalPieces,lines:totalLines,clearedNow});
   }
   return events;
 }
-export function botScoreAt(ms){
-  const events=botScoreEventsUntil(ms);
-  return events.length?events[events.length-1].score:0;
+function eventsFor(difficulty){
+  if(!Object.hasOwn(BOT_DIFFICULTIES,difficulty))throw new Error('Unknown bot difficulty');
+  if(!cachedBotEvents.has(difficulty))cachedBotEvents.set(difficulty,buildBotEvents(difficulty));
+  return cachedBotEvents.get(difficulty);
+}
+export function botScoreEventsUntil(ms,difficulty='easy'){
+  const limit=Math.min(BOT_MAX_MS,Math.max(0,Number.isFinite(ms)?ms:0));
+  return eventsFor(difficulty).filter(e=>e.at<=limit);
+}
+export function botScoreAt(ms,difficulty='easy'){
+  const events=eventsFor(difficulty);
+  const limit=Math.min(BOT_MAX_MS,Math.max(0,Number.isFinite(ms)?ms:0));
+  let low=0,high=events.length;
+  while(low<high){const mid=(low+high)>>>1;if(events[mid].at<=limit)low=mid+1;else high=mid;}
+  return low?events[low-1].score:0;
 }
 export function replay(seed,events,elapsedMs){
   if(!Array.isArray(events)||events.length>3000)throw new Error('Invalid actions');

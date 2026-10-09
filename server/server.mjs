@@ -5,7 +5,7 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
-import {replay,botScoreAt} from '../docs/engine.js';
+import {replay,botScoreAt,BOT_DIFFICULTIES} from '../docs/engine.js';
 const selfDir=path.dirname(fileURLToPath(import.meta.url));
 const root=path.resolve(selfDir,'..');
 const docs=path.resolve(root,'docs');
@@ -51,7 +51,7 @@ function accessibleRoom(id,ticket){
   return want.length===got.length&&crypto.timingSafeEqual(want,got)?room:null;
 }
 function expired(room){return !room.startedAt&&Date.now()>room.expiresAt;}
-function roomPublic(room){return {id:room.id,playerName:room.playerName,status:expired(room)?'expired':room.status,durationMs:room.durationMs,createdAt:room.createdAt};}
+function roomPublic(room){return {id:room.id,playerName:room.playerName,status:expired(room)?'expired':room.status,durationMs:room.durationMs,difficulty:room.difficulty||'easy',createdAt:room.createdAt};}
 const mime={'.html':'text/html; charset=utf-8','.css':'text/css; charset=utf-8','.js':'text/javascript; charset=utf-8','.png':'image/png','.ico':'image/x-icon'};
 function serveStatic(req,res,url){
   let pathname;
@@ -75,7 +75,7 @@ const server=http.createServer(async(req,res)=>{
   let u;try{u=new URL(req.url,`http://${req.headers.host||'localhost'}`);}catch{return bad(res,400,'Bad URL');}
   const pathname=u.pathname;
   try{
-    if(pathname==='/api/health'&&req.method==='GET')return json(res,200,{ok:true,service:'daniya-block-pk',version:'0.1.0',resultsPending:Object.values(state.rooms).filter(r=>r.status==='finished'&&!r.ackAt).length});
+    if(pathname==='/api/health'&&req.method==='GET')return json(res,200,{ok:true,service:'daniya-block-pk',version:'0.1.3',resultsPending:Object.values(state.rooms).filter(r=>r.status==='finished'&&!r.ackAt).length});
     if(pathname==='/api/rooms'&&req.method==='POST'){
       if(!authorized(req))return bad(res,401,'Bridge authentication required');
       const b=await readJson(req);
@@ -84,12 +84,14 @@ const server=http.createServer(async(req,res)=>{
       const durationSeconds=Number(b.durationSeconds??90);
       if(!Number.isInteger(durationSeconds)||durationSeconds<5||durationSeconds>180)return bad(res,400,'Duration must be 5..180 seconds');
       const name=String(b.playerName||'QQ玩家').slice(0,30);
+      const difficulty=String(b.difficulty??'easy');
+      if(!Object.hasOwn(BOT_DIFFICULTIES,difficulty))return bad(res,400,'Unknown difficulty (easy/medium/hard)');
       const id=makeId(9),ticket=makeId(32);
-      const room={id,groupId,qqId,playerName:name,seed:crypto.randomBytes(4).readUInt32LE(0),ticketHash:sha(ticket),createdAt:Date.now(),expiresAt:Date.now()+30*60000,durationMs:durationSeconds*1000,status:'ready',startedAt:null,finishedAt:null,result:null,ackAt:null};
+      const room={id,groupId,qqId,playerName:name,seed:crypto.randomBytes(4).readUInt32LE(0),ticketHash:sha(ticket),createdAt:Date.now(),expiresAt:Date.now()+30*60000,durationMs:durationSeconds*1000,difficulty,status:'ready',startedAt:null,finishedAt:null,result:null,ackAt:null};
       state.rooms[id]=room;save();
       const link=new URL(publicGame);link.searchParams.set('room',id);link.searchParams.set('ticket',ticket);
-      console.log(`[pk-room] created room=${id} group=${groupId} qq=${qqId}`);
-      return json(res,201,{id,roomUrl:link.toString(),ticket,publicApi,durationMs:room.durationMs});
+      console.log(`[pk-room] created room=${id} group=${groupId} qq=${qqId} difficulty=${difficulty}`);
+      return json(res,201,{id,roomUrl:link.toString(),ticket,publicApi,durationMs:room.durationMs,difficulty});
     }
     const roomMatch=pathname.match(/^\/api\/rooms\/([a-zA-Z0-9_-]{8,32})(?:\/(start|finish))?$/);
     if(roomMatch){
@@ -104,7 +106,7 @@ const server=http.createServer(async(req,res)=>{
         if(room.status!=='ready')return bad(res,409,'Room already started or finished');
         room.status='playing';room.startedAt=Date.now();save();
         console.log(`[pk-room] started room=${id}`);
-        return json(res,200,{id,seed:room.seed,durationMs:room.durationMs});
+        return json(res,200,{id,seed:room.seed,durationMs:room.durationMs,difficulty:room.difficulty||'easy'});
       }
       if(action==='finish'&&req.method==='POST'){
         if(room.status!=='playing')return bad(res,409,'Room not in progress');
@@ -118,7 +120,7 @@ const server=http.createServer(async(req,res)=>{
         try{reconstructed=replay(room.seed,events,elapsedMs);}catch(e){return bad(res,422,'Cannot replay actions: '+e.message);}
         if(reconstructed.score!==score||reconstructed.lines!==lines)return bad(res,422,'Score mismatch with action replay');
         if(!reconstructed.ended&&elapsedMs<room.durationMs-700)return bad(res,422,'Match not completed');
-        const botScore=botScoreAt(elapsedMs);
+        const botScore=botScoreAt(elapsedMs,room.difficulty||'easy');
         const winner=score>botScore?'player':score<botScore?'bot':'tie';
         room.result={playerScore:score,lines,botScore,winner,elapsedMs,actionCount:events.length,replayChecked:true,
           qqIdentityVerified:false,affectionEligible:false};

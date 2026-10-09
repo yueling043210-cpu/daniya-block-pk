@@ -13,6 +13,14 @@
   </header>
   <section class="hero"><div><span class="eyebrow">01 / BLOCK DUEL</span><p class="hero-title">来一场<span>认真</span>的较量。</p><p class="intro">旋转、移动、消除方块。达妮娅的分数也在悄悄上涨……</p></div><div class="bubble">「输了可不许耍赖哦～」</div></section>
   <div id="notice" role="status" class="notice">网页本地体验：成绩不会发送到 QQ，也不会修改好感度。</div>
+  <section class="difficulty-panel" aria-label="选择达妮娅难度">
+    <div><label for="difficulty">达妮娅对手难度</label><div id="difficultyInfo" class="difficulty-info">轻松体验，约每 3～6 秒落下一块</div></div>
+    <select id="difficulty" aria-label="选择对手难度">
+      <option value="easy">简单 · 新手</option>
+      <option value="medium">中等 · 普通玩家</option>
+      <option value="hard">困难 · 世界级竞速</option>
+    </select>
+  </section>
   <div class="scoreboard">
     <div class="score-side"><div class="small">PLAYER · 玩家</div><div id="playerScore" class="big-score">0</div><div class="muted">消除 <b id="lines">0</b> 行 <span class="sep">·</span> 等级 <b id="level">1</b></div></div>
     <div class="versus"><div class="vs">VS</div><div class="clock" id="clock">01:30</div></div>
@@ -25,6 +33,6 @@
   <section class="actionbar"><button id="start" class="primary">开始挑战 <span>↗</span></button><button id="restart" class="secondary" disabled>重新开始</button></section>
   <section class="touch" aria-label="游戏触控操作"><button id="left" aria-label="左移">←</button><button id="rotate" aria-label="旋转">⟳</button><button id="right" aria-label="右移">→</button><button id="down" aria-label="向下">↓</button><button id="drop" aria-label="直落">⇣</button></section>
   <div id="results" class="results hidden" role="status"><div class="eyebrow">MATCH RESULT</div><h2 id="resultHeading"></h2><p id="resultDetail"></p><p id="resultSync"></p></div>
-  <footer><span>Block PK v0.1.2 · 测试版</span><span>玩家操作真实运行 · 达妮娅约每 1.5～3 秒模拟落块得分</span><span>不连接好感度数据库</span></footer>
+  <footer><span>Block PK v0.1.3 · 测试版</span><span>玩家操作真实运行 · 比分每 1.5～3 秒更新 · 放块速度依难度变化</span><span>不连接好感度数据库</span></footer>
 </div>
 </body></html>

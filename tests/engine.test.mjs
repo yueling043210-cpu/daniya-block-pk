@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {BlockGame,replay,botScoreAt,botScoreEventsUntil} from '../docs/engine.js';
+import {BlockGame,replay,botScoreAt,botScoreEventsUntil,BOT_DIFFICULTIES,BOT_DIFFICULTY_NAMES} from '../docs/engine.js';
 test('seed replay deterministic and scores agree',()=>{
  const seed=12345, game=new BlockGame(seed), events=[];
  const add=(a,t)=>{game.input(a,t);events.push({a,t});};
@@ -22,19 +22,45 @@ test('initial state and bot points',()=>{
  assert.equal(game.score,0);assert.equal(botScoreAt(0),0);assert(botScoreAt(90000)>0);
 });
 
-test('Daniya scores only every 1.5-3 seconds, with realistic step changes',()=>{
- const events=botScoreEventsUntil(90000);
- assert(events.length>=30&&events.length<=60,`Unexpected pieces: ${events.length}`);
- assert.equal(botScoreAt(0),0);
- for(let i=0;i<events.length;i++){
-   const event=events[i],prior=i?events[i-1]:{at:0,score:0};
-   assert(event.at-prior.at>=1500&&event.at-prior.at<=3000);
-   assert.equal(botScoreAt(event.at-1),prior.score,'Score must remain still until next drop');
-   assert.equal(botScoreAt(event.at),event.score);
-   assert(event.delta>0&&event.delta<=333,'Score jump must look like plausible block/line points');
-   assert([0,100,300].includes(event.clearBonus));
-   assert.equal(event.score-prior.score,event.delta);
- }
- assert(botScoreAt(90000)>300&&botScoreAt(90000)<2200);
- assert.equal(botScoreAt(90000),botScoreAt(90000),'Both clients reproduce the same result');
+test('Daniya has three reproducible difficulty presets with 1.5-3s visual updates',()=>{
+  assert.deepEqual(BOT_DIFFICULTY_NAMES,['easy','medium','hard']);
+  const minute={};
+  for(const name of BOT_DIFFICULTY_NAMES){
+    const cfg=BOT_DIFFICULTIES[name];
+    const events=botScoreEventsUntil(60000,name);
+    assert(events.length>=19&&events.length<=40,`${name} checkpoints: ${events.length}`);
+    assert.equal(botScoreAt(0,name),0);
+    let prior={at:0,score:0,pieces:0,lines:0};
+    for(const event of events){
+      assert(event.at-prior.at>=1500&&event.at-prior.at<=3000,`${name} visual interval`);
+      assert.equal(botScoreAt(event.at-1,name),prior.score,`${name} no changes between visual ticks`);
+      assert.equal(botScoreAt(event.at,name),event.score);
+      assert(event.delta>=0&&event.pieces>=prior.pieces&&event.lines>=prior.lines);
+      assert.equal(event.score-prior.score,event.delta);
+      assert.equal(event.clearBonus>=0,true);
+      prior=event;
+    }
+    const last=events.at(-1);
+    const pps=last.pieces/60;
+    assert(pps>=cfg.minPps-0.1&&pps<=cfg.maxPps+0.1,`${name} pps=${pps}`);
+    minute[name]=last.score;
+    assert.equal(last.score,botScoreAt(60000,name));
+    assert.equal(last.score,botScoreAt(60000,name),'deterministic replay');
+  }
+  assert(minute.easy>0&&minute.easy<1500);
+  assert(minute.medium>minute.easy&&minute.medium<10000);
+  assert(minute.hard>minute.medium*10);
+  assert.throws(()=>botScoreAt(10,'not-a-difficulty'),/Unknown bot difficulty/);
+  assert.throws(()=>botScoreAt(10,'__proto__'),/Unknown bot difficulty/);
+  console.log('PASS difficulty 60s scores',minute);
+});
+
+test('Daniya simulation matches line and drop scoring semantics at all difficulties',()=>{
+  for(const name of BOT_DIFFICULTY_NAMES){
+    const events=botScoreEventsUntil(90000,name);
+    const totalPieces=events.at(-1).pieces,totalLines=events.at(-1).lines;
+    assert(totalPieces>0&&totalLines>=0);
+    assert.equal(events.at(-1).score,botScoreAt(90000,name));
+    assert(events.every(e=>Number.isInteger(e.delta)&&e.delta>=0));
+  }
 });

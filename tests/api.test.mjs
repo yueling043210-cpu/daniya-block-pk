@@ -5,7 +5,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import {spawn} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
-import {BlockGame} from '../docs/engine.js';
+import {BlockGame,botScoreAt} from '../docs/engine.js';
 const base=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 test('full local communication: create, start, replay score, poll, acknowledge',async()=>{
  const port=29000+Math.floor(Math.random()*15000), secret='test-secret-at-least-32-long-88ff';
@@ -23,12 +23,16 @@ test('full local communication: create, start, replay score, poll, acknowledge',
    assert(ready,'server failed to start\n'+log);
    let r=await hit('/api/rooms',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({groupId:'1058380864',qqId:'2820758373'})});
    assert.equal(r.status,401);
-   r=await hit('/api/rooms',{method:'POST',headers:auth,body:JSON.stringify({groupId:'1058380864',qqId:'2820758373',playerName:'测试',durationSeconds:5})});
+   r=await hit('/api/rooms',{method:'POST',headers:auth,body:JSON.stringify({groupId:'1058380864',qqId:'2820758373',playerName:'测试',durationSeconds:5,difficulty:'bad'})});
+   assert.equal(r.status,400,'invalid room difficulty rejected');
+   r=await hit('/api/rooms',{method:'POST',headers:auth,body:JSON.stringify({groupId:'1058380864',qqId:'2820758373',difficulty:'__proto__'})});
+   assert.equal(r.status,400,'prototype-based difficulty must be rejected');
+   r=await hit('/api/rooms',{method:'POST',headers:auth,body:JSON.stringify({groupId:'1058380864',qqId:'2820758373',playerName:'测试',durationSeconds:5,difficulty:'medium'})});
    assert.equal(r.status,201);const {id,ticket}=r.data;
-   assert(id);assert(ticket);assert(r.data.roomUrl.includes('room='));
-   r=await hit(`/api/rooms/${id}?ticket=${ticket}`);assert.equal(r.data.status,'ready');
+   assert(id);assert(ticket);assert(r.data.roomUrl.includes('room='));assert.equal(r.data.difficulty,'medium');
+   r=await hit(`/api/rooms/${id}?ticket=${ticket}`);assert.equal(r.data.status,'ready');assert.equal(r.data.difficulty,'medium');
    r=await hit(`/api/rooms/${id}/start`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({ticket})});
-   assert.equal(r.status,200);
+   assert.equal(r.status,200);assert.equal(r.data.difficulty,'medium');
    const game=new BlockGame(r.data.seed);
    const events=[{a:'left',t:120},{a:'rotate',t:220},{a:'drop',t:450},{a:'right',t:730},{a:'drop',t:1000}];
    for(const x of events)game.input(x.a,x.t);
@@ -42,6 +46,7 @@ test('full local communication: create, start, replay score, poll, acknowledge',
    assert.equal(r.status,200,JSON.stringify(r.data));
    assert.equal(r.data.playerScore,game.score);
    assert.equal(r.data.replayChecked,true);
+   assert.equal(r.data.botScore,botScoreAt(5000,'medium'));
    assert.equal(r.data.affectionEligible,false);
    r=await hit('/api/bridge/results',{headers:auth});
    assert.equal(r.data.matches.length,1);assert.equal(r.data.matches[0].qqId,'2820758373');

@@ -3,3 +3,10 @@
 @media(max-width:570px){.shell{padding-top:12px}.masthead{margin-bottom:17px}h1{font-size:17px}.eyebrow{font-size:10px}.hero{display:block}.bubble{display:none}.hero-title{font-size:26px}.intro{font-size:12px}.scoreboard{padding:10px 12px}.small{font-size:10px}.versus{flex-basis:65px}.arena{grid-template-columns:minmax(0,1fr) 90px;gap:8px}.game-card{padding:8px}.board{gap:1px;border-width:5px}.preview-box,.rules,.voice{padding:9px}.rules p{font-size:10px}.voice{font-size:10px}.board-heading{font-size:9px}.touch button{height:55px}.hint{font-size:9px}.next-board{gap:1px;margin:8px auto 1px}.mode{font-size:9px;padding:7px}}
 @media(max-width:390px){.arena{grid-template-columns:minmax(0,1fr) 77px}.rules{display:none}.touch button{height:50px}}
 @media(max-width:570px){.board{width:min(100%,220px)}.touch{position:sticky;bottom:0;z-index:10;background:#0d1020e8;border:1px solid #303651;padding:7px;margin-left:-3px;margin-right:-3px;border-radius:14px;backdrop-filter:blur(12px)}}
+
+.difficulty-panel{display:flex;align-items:center;justify-content:space-between;gap:12px;border:1px solid var(--line);border-radius:12px;padding:11px 14px;background:#192139;margin-bottom:12px}
+.difficulty-panel label{display:block;color:var(--text);font-size:13px;font-weight:800}
+.difficulty-info{font-size:11px;color:var(--sub);margin-top:4px;line-height:1.5}
+.difficulty-panel select{min-width:160px;max-width:50%;border:1px solid #777ba2;border-radius:9px;background:#242e4a;color:#f6edff;font:inherit;font-size:12px;padding:10px;cursor:pointer}
+.difficulty-panel select:disabled{opacity:.65;cursor:not-allowed}
+@media(max-width:570px){.difficulty-panel{gap:8px;padding:10px}.difficulty-panel select{min-width:125px;max-width:49%;font-size:11px}.difficulty-info{font-size:10px}}
