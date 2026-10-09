@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="zh-CN"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1" />
+<meta name="theme-color" content="#101425"><meta name="description" content="与达妮娅挑战方块 PK。QQ 内置浏览器友好的轻量 HTML5 游戏。" />
+<title>达妮娅 · 方块 PK</title>
+<link rel="stylesheet" href="./style.css"/>
+<script defer src="./config.js"></script><script type="module" src="./app.js"></script>
+</head><body>
+<div class="shell">
+  <header class="masthead">
+    <div class="brand"><span class="logo">▦</span><div><div class="eyebrow">DANIYA ARCADE / 方块实验室</div><h1>方块 PK <span class="accent">·</span> 达妮娅</h1></div></div>
+    <span id="modeBadge" class="mode">体验模式</span>
+  </header>
+  <section class="hero"><div><span class="eyebrow">01 / BLOCK DUEL</span><p class="hero-title">来一场<span>认真</span>的较量。</p><p class="intro">旋转、移动、消除方块。达妮娅的分数也在悄悄上涨……</p></div><div class="bubble">「输了可不许耍赖哦～」</div></section>
+  <div id="notice" role="status" class="notice">网页本地体验：成绩不会发送到 QQ，也不会修改好感度。</div>
+  <div class="scoreboard">
+    <div class="score-side"><div class="small">PLAYER · 玩家</div><div id="playerScore" class="big-score">0</div><div class="muted">消除 <b id="lines">0</b> 行 <span class="sep">·</span> 等级 <b id="level">1</b></div></div>
+    <div class="versus"><div class="vs">VS</div><div class="clock" id="clock">01:30</div></div>
+    <div class="score-side right"><div class="small">DANIYA · 达妮娅</div><div id="botScore" class="big-score bot">0</div><div class="muted" id="botRemark">“别太小看我哦”</div></div>
+  </div>
+  <div class="arena">
+    <div class="game-card"><div class="board-heading"><span>PLAYFIELD <span class="live-dot"></span></span><span id="gameStatus">READY</span></div><div id="board" class="board" aria-label="10列20行方块棋盘"></div><div class="hint">方向键移动 · ↑旋转 · 空格直落</div></div>
+    <aside class="sidepanel"><div class="preview-box"><div class="small">NEXT PIECE</div><div id="next" class="next-board"></div></div><div class="rules"><div class="small">HOW TO PLAY</div><p>横移与旋转拼出完整横行。连续清除越多行，得分越高。</p><p>一局 90 秒，分数更高的一方获胜。</p></div><div class="voice" id="voice">快点开始呀，我都等不及了。</div></aside>
+  </div>
+  <section class="actionbar"><button id="start" class="primary">开始挑战 <span>↗</span></button><button id="restart" class="secondary" disabled>重新开始</button></section>
+  <section class="touch" aria-label="游戏触控操作"><button id="left" aria-label="左移">←</button><button id="rotate" aria-label="旋转">⟳</button><button id="right" aria-label="右移">→</button><button id="down" aria-label="向下">↓</button><button id="drop" aria-label="直落">⇣</button></section>
+  <div id="results" class="results hidden" role="status"><div class="eyebrow">MATCH RESULT</div><h2 id="resultHeading"></h2><p id="resultDetail"></p><p id="resultSync"></p></div>
+  <footer><span>Block PK v0.1 · 测试版</span><span>玩家操作真实运行 · 对手比分为模拟</span><span>不连接好感度数据库</span></footer>
+</div>
+</body></html>

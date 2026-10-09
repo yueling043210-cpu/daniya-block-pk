@@ -1,0 +1,28 @@
+$ErrorActionPreference='Stop'
+$root=Split-Path -Parent $MyInvocation.MyCommand.Path
+Set-Location -LiteralPath $root
+$repo='https://github.com/yueling043210-cpu/daniya-block-pk.git'
+if(-not(Get-Command git -ErrorAction SilentlyContinue)) {
+    Write-Host 'Git 未安装。请安装 Git for Windows 或用 GitHub Desktop 手动发布。' -ForegroundColor Yellow
+    exit 1
+}
+if(-not(Test-Path 'docs/index.html') -or -not(Test-Path '.gitignore')){throw '目录缺少 docs/index.html 或 .gitignore'}
+if(-not(Test-Path '.git')){& git init; if($LASTEXITCODE -ne 0){throw 'git init failed'}}
+& git branch -M main
+& git add .
+if($LASTEXITCODE -ne 0){throw 'git add failed'}
+$trackedSecrets=& git ls-files -- 'server-data/*' '.env' '.env.*'
+if($trackedSecrets){throw ('发现可能的密钥文件被 Git 追踪：'+($trackedSecrets -join ', ')+'。拒绝发布。')}
+$origin=& git remote get-url origin 2>$null
+if($LASTEXITCODE -ne 0){& git remote add origin $repo}
+elseif($origin.Trim() -ne $repo){throw ('origin 指向其他地址：'+$origin+'，为保护其他仓库已停止。')}
+Write-Host '准备推送以下文件到公开 GitHub 仓库：' -ForegroundColor Cyan
+& git status --short
+Write-Host "仓库：$repo" -ForegroundColor Cyan
+$confirm=Read-Host '已在 GitHub 创建空白 Public 仓库，且确认没有隐私或密钥文件？输入 PUBLISH'
+if($confirm -cne 'PUBLISH'){Write-Host '用户取消，未推送。';exit 0}
+& git diff --cached --quiet
+if($LASTEXITCODE -ne 0){& git commit -m 'Initial Daniya Block PK v0.1';if($LASTEXITCODE -ne 0){throw 'git commit 失败，请检查 Git 用户名和邮箱设置'}}
+& git push -u origin main
+if($LASTEXITCODE -ne 0){throw 'git push 失败。请检查 GitHub 登录状态或仓库是否已创建。'}
+Write-Host '推送成功。下一步：GitHub Settings > Pages > main > /docs > Save' -ForegroundColor Green

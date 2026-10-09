@@ -1,0 +1,23 @@
+达妮娅方块 PK v0.1 — GitHub Pages 第一版
+
+账号：yueling043210-cpu
+推荐仓库：daniya-block-pk
+
+第一步：解压此 ZIP。
+第二步：在 GitHub 新建空白 Public 仓库 daniya-block-pk。
+第三步：双击 Publish-To-GitHub.cmd（要求已安装 Git for Windows），按提示确认并输入 PUBLISH；也可以用 GitHub Desktop 上传项目根目录全部文件。
+第四步：仓库 Settings → Pages → Deploy from a branch → main /docs → Save。
+第五步：用 QQ 测试发布后的网址 https://yueling043210-cpu.github.io/daniya-block-pk/ 。
+
+这个网址是部署成功后的预期网址，并不表示现在已经上线。
+
+公开 Pages 版 = 可以实际玩俄罗斯方块，但只是本地体验，不会回传分数或好感度。
+
+本地传分验证：双击 server\Start-Local-Server.cmd，然后新开 PowerShell：
+  node server/create-room.mjs 1058380864 2820758373 测试玩家 15
+  （复制浏览器链接，完成15秒游戏）
+  node server/bridge-poll.mjs
+
+正式 QQ 通信 = 还需部署公网 HTTPS API；切勿公开本机127.0.0.1链接。
+
+完整说明见 README.md、GITHUB-PUBLISH.md。

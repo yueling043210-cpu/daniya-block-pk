@@ -1,0 +1,12 @@
+{
+  "name":"daniya-block-pk",
+  "version":"0.1.0",
+  "type":"module",
+  "private":true,
+  "description":"Daniya QQ mobile falling-block PK prototype with replay-checked test backend",
+  "scripts":{
+    "serve":"node server/server.mjs",
+    "test":"node --test"
+  },
+  "engines":{"node":">=22"}
+}
