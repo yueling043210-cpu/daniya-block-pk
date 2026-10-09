@@ -1,9 +1,9 @@
 {
   "name": "daniya-block-pk",
-  "version": "0.1.3",
+  "version": "0.2.0",
   "type": "module",
   "private": true,
-  "description": "Daniya QQ mobile falling-block PK prototype with replay-checked test backend",
+  "description": "Daniya falling block PK with responsive duel UI, local commentary, and replay-checked backend prototype",
   "scripts": {
     "serve": "node server/server.mjs",
     "test": "node --test"
