@@ -9,7 +9,8 @@ import {BlockGame,botScoreAt} from '../docs/engine.js';
 const base=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 test('full local communication: create, start, replay score, poll, acknowledge',async()=>{
  const port=29000+Math.floor(Math.random()*15000), secret='test-secret-at-least-32-long-88ff';
- const child=spawn(process.execPath,['server/server.mjs'],{cwd:base,env:{...process.env,PORT:String(port),HOST:'127.0.0.1',BRIDGE_SECRET:secret},stdio:['ignore','pipe','pipe']});
+ const isolatedDataDir=fs.mkdtempSync(path.join(os.tmpdir(),'daniya-pk-api-test-'));
+ const child=spawn(process.execPath,['server/server.mjs'],{cwd:base,env:{...process.env,PORT:String(port),HOST:'127.0.0.1',BRIDGE_SECRET:secret,BLOCK_PK_DATA_DIR:isolatedDataDir},stdio:['ignore','pipe','pipe']});
  let log=''; child.stdout.on('data',b=>log+=b);child.stderr.on('data',b=>log+=b);
  const api=`http://127.0.0.1:${port}`;
  const hit=async(path,options={})=>{const r=await fetch(api+path,options);let data=await r.json();return {status:r.status,data};};
@@ -48,11 +49,27 @@ test('full local communication: create, start, replay score, poll, acknowledge',
    assert.equal(r.data.replayChecked,true);
    assert.equal(r.data.botScore,botScoreAt(5000,'medium',game.seed));
    assert.equal(r.data.affectionEligible,false);
+   // Second room: top-out before the timer must lose even when player has more points.
+   const p=await hit('/api/rooms',{method:'POST',headers:auth,body:JSON.stringify({groupId:'1058380864',qqId:'3154665303',durationSeconds:10,difficulty:'easy'})});
+   assert.equal(p.status,201);
+   const rid=p.data.id,rticket=p.data.ticket;
+   const st=await hit(`/api/rooms/${rid}/start`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({ticket:rticket})});
+   assert.equal(st.status,200);
+   const top=new BlockGame(st.data.seed), topActions=[];let topMs=0;
+   while(!top.ended && topMs<7000){topMs+=100;top.input('drop',topMs);topActions.push({a:'drop',t:topMs});}
+   assert(top.ended,'top-out should be reached');
+   assert(top.score>botScoreAt(topMs,'easy',top.seed),'player must lead at topout');
+   const topRes=await hit(`/api/rooms/${rid}/finish`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({ticket:rticket,score:top.score,lines:top.lines,elapsedMs:topMs,events:topActions})});
+   assert.equal(topRes.status,200,JSON.stringify(topRes.data));
+   assert.equal(topRes.data.winner,'bot');
+   assert.equal(topRes.data.topOut,true);
+   assert.equal(topRes.data.endReason,'topout');
    r=await hit('/api/bridge/results',{headers:auth});
-   assert.equal(r.data.matches.length,1);assert.equal(r.data.matches[0].qqId,'2820758373');
+   assert.equal(r.data.matches.length,2);assert(r.data.matches.some(m=>m.qqId==='2820758373'));assert(r.data.matches.some(m=>m.qqId==='3154665303' && m.winner==='bot'));
    r=await hit(`/api/bridge/results/${id}/ack`,{method:'POST',headers:auth});assert.equal(r.status,200);
+   r=await hit(`/api/bridge/results/${rid}/ack`,{method:'POST',headers:auth});assert.equal(r.status,200);
    r=await hit('/api/bridge/results',{headers:auth});assert.equal(r.data.matches.length,0);
    r=await hit(`/api/rooms/${id}/start`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({ticket})});assert.equal(r.status,409);
    console.log('PASS API roundtrip, tamper rejection, no affection, Bridge pending/ack');
- }finally{child.kill();}
+ }finally{child.kill();fs.rmSync(isolatedDataDir,{recursive:true,force:true});}
 });

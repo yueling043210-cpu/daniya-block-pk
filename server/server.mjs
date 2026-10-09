@@ -5,11 +5,11 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
-import {replay,botScoreAt,BOT_DIFFICULTIES} from '../docs/engine.js';
+import {replay,botScoreAt,BOT_DIFFICULTIES,resolveWinner} from '../docs/engine.js';
 const selfDir=path.dirname(fileURLToPath(import.meta.url));
 const root=path.resolve(selfDir,'..');
 const docs=path.resolve(root,'docs');
-const dataDir=path.resolve(root,'server-data');
+const dataDir=process.env.BLOCK_PK_DATA_DIR ? path.resolve(process.env.BLOCK_PK_DATA_DIR) : path.resolve(root,'server-data');
 const dbFile=path.join(dataDir,'matches.json');
 const secretFile=path.join(dataDir,'bridge-secret.txt');
 fs.mkdirSync(dataDir,{recursive:true});
@@ -121,8 +121,9 @@ const server=http.createServer(async(req,res)=>{
         if(reconstructed.score!==score||reconstructed.lines!==lines)return bad(res,422,'Score mismatch with action replay');
         if(!reconstructed.ended&&elapsedMs<room.durationMs-700)return bad(res,422,'Match not completed');
         const botScore=botScoreAt(elapsedMs,room.difficulty||'easy',room.seed);
-        const winner=score>botScore?'player':score<botScore?'bot':'tie';
-        room.result={playerScore:score,lines,botScore,winner,elapsedMs,actionCount:events.length,replayChecked:true,
+        const topOut=!!reconstructed.ended;
+        const winner=resolveWinner(score,botScore,topOut);
+        room.result={playerScore:score,lines,botScore,winner,topOut,endReason:topOut?'topout':'timeout',elapsedMs,actionCount:events.length,replayChecked:true,
           qqIdentityVerified:false,affectionEligible:false};
         room.finishedAt=Date.now();room.status='finished';save();
         console.log(`[pk-result] room=${id} group=${room.groupId} qq=${room.qqId} score=${score} bot=${botScore} replay=ok`);

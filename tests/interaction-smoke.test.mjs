@@ -14,7 +14,7 @@ class MockElement {
  querySelector(){return this.endPanel}
 }
 test('dropdown changes only before match; live chat scrolls; final score frozen; restart from centered popup',async()=>{
- const ids=['board','next','notice','start','readyOverlay','playerScore','botScore','lines','level','clock','botRemark','difficultySelect','difficultyDescription','chatFeed','endOverlay','endHeading','endDetail','endLine','endSync','endReplay','endKicker','left','right','rotate','down','drop'];
+ const ids=['board','next','notice','start','readyOverlay','playerScore','botScore','lines','level','clock','botRemark','difficultySelect','chatFeed','endOverlay','endHeading','endDetail','endLine','endSync','endReplay','endKicker','left','right','rotate','down','drop'];
  const elements=Object.fromEntries(ids.map(k=>[k,new MockElement(k)]));
  elements.endOverlay.endPanel=new MockElement('end-panel');
  globalThis.document={getElementById:id=>elements[id],createElement:()=>new MockElement()};
@@ -27,7 +27,6 @@ test('dropdown changes only before match; live chat scrolls; final score frozen;
  assert.equal(elements.difficultySelect.value,'easy');
  elements.difficultySelect.value='medium';elements.difficultySelect.listeners.change();
  assert.equal(elements.difficultySelect.value,'medium');
- assert.match(elements.difficultyDescription.textContent,/认真的娅娅/);
  await elements.start.listeners.click();
  assert.equal(elements.start.disabled,true);
  assert.equal(elements.readyOverlay.classList.contains('hidden'),true);

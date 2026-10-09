@@ -31,7 +31,8 @@ export const BARRAGE = Object.freeze({
     '看到了吗？这才叫追分！','不要松懈，我已经超过你了。',
     '嘿嘿，现在轮到你追我啦。'
   ]),
-  tie: Object.freeze(['咦，我们的分数居然一样？','平手呀，谁会先打破僵局呢？','这么巧，分数碰到一起啦。'])
+  tie: Object.freeze(['咦，我们的分数居然一样？','平手呀，谁会先打破僵局呢？','这么巧，分数碰到一起啦。']),
+  topout: Object.freeze(['诶……方块都堆满了哦！','撑不住啦？这局算我赢啦～','堆满也别急，再来一局嘛！','嘿嘿，棋盘先撑不住啦。'])
 });
 
 export const BARRAGE_INTERVAL_MS = 8000;

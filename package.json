@@ -1,9 +1,9 @@
 {
   "name": "daniya-block-pk",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "type": "module",
   "private": true,
-  "description": "Daniya Block PK: seeded opponent, larger playfield, bottom-anchored live chat and locked scores",
+  "description": "Daniya Block PK: unified rose livestream bubbles, compact difficulty, top-out loss on browser and replay server",
   "scripts": {
     "serve": "node server/server.mjs",
     "test": "node --test"

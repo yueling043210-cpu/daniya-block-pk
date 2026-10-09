@@ -24,12 +24,17 @@ test('compact scoreboard-only layout, no bottom duplicate start/restart bar',()=
  assert(page.includes('id="endOverlay"')&&page.includes('id="endReplay"'));
  assert(page.indexOf('id="endOverlay"')<page.indexOf('id="left"'));
 });
-test('one real dropdown with three descriptions and neutral unselected edge',()=>{
+test('compact difficulty dropdown without explanation',()=>{
  assert(page.includes('<select id="difficultySelect"'));
- for(const [id,name] of [['easy','犯困的水蜜桃'],['medium','认真的娅娅'],['hard','终极邪恶水蜜桃']]){
+ for(const [id,name] of [['easy','犯困的水蜜桃'],['medium','认真的娅娅'],['hard','邪恶的水蜜桃']]){
   assert(page.includes(`<option value="${id}"`)); assert(page.includes(name));
  }
  assert.equal((page.match(/<option value="/g)||[]).length,3);
+ assert(!page.includes('id="difficultyDescription"'));
+ assert(page.includes('>难度</label>'));
+ assert(!page.includes('DIFFICULTY · 难度'));
+ assert(!page.includes('终极邪恶水蜜桃'));
+ assert(!page.includes('难度简介'));
  assert(!page.includes('class="diff-choice'));
  assert(css.includes('.difficulty-select:disabled'));
  assert(css.includes('.difficulty-drawer{background:#181d32;border:1px solid #303651'));
@@ -61,6 +66,11 @@ test('center winner modal freezes result and retains server finish integration',
  assert(script.includes('setDifficultyLocked(true);draw()'));
  assert(script.includes('/finish'));
  assert(script.includes('data.winner'));
+ assert(script.includes('const winner=resolveWinner(s.score,bot,topOut)'));
+ assert(script.includes("postChat('topout')"));
+ assert(css.includes('background:#493044'));
+ assert(css.includes('background:#f3a2c4'));
+ assert(!script.includes('difficultyDescription'));
  assert(script.includes('服务器已复算并记录'));
  assert(script.includes("els.endOverlay.classList.remove('hidden')"));
 });

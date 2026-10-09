@@ -207,6 +207,11 @@ export function botScoreAt(ms,difficulty='easy',matchSeed=0){
   while(low<high){const mid=(low+high)>>>1;if(events[mid].at<=limit)low=mid+1;else high=mid;}
   return low?events[low-1].score:0;
 }
+// A top-out is always a loss, regardless of the score accumulated so far.
+export function resolveWinner(playerScore,botScore,topOut=false){
+  if(topOut)return 'bot';
+  return playerScore>botScore?'player':playerScore<botScore?'bot':'tie';
+}
 export function replay(seed,events,elapsedMs){
   if(!Array.isArray(events)||events.length>3000)throw new Error('Invalid actions');
   const game=new BlockGame(seed);

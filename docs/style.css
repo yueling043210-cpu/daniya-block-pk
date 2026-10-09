@@ -73,3 +73,24 @@
  .preview-box,.difficulty-drawer{padding:7px}
  .chat-panel{padding:6px;min-height:110px}
 }
+
+/* v0.2.3: single-color dark rose livestream bubbles, flat peach button, compact difficulty. */
+.chat-msg,.chat-msg.reaction,.chat-msg.overtake{
+ background:#493044;border:1px solid #70425e;color:#ffe6f0;
+ box-shadow:none;
+}
+.chat-name{color:#ffaccd;font-weight:800;letter-spacing:0}
+.ready-start{
+ background:#f3a2c4;border:1px solid #f3a2c4;color:#322039;
+ background-image:none;min-width:180px;padding:18px 34px;
+}
+.ready-start:hover:not(:disabled){background:#f6b0cd;border-color:#f6b0cd}
+.ready-start:active:not(:disabled){background:#e993b7}
+.difficulty-description{display:none!important}
+.difficulty-drawer{padding-bottom:12px}
+.chat-panel{min-height:240px}
+@media(max-width:570px){
+ .ready-start{min-width:128px;padding:13px 16px}
+ .chat-panel{min-height:160px}
+}
+@media(max-width:370px){.chat-panel{min-height:130px}}

@@ -1,5 +1,5 @@
-import {BlockGame,botScoreAt,BOT_DIFFICULTIES,WIDTH,HEIGHT} from './engine.js?v=021';
-import {BARRAGE_INTERVAL_MS,leadState,leadReaction,selectBarrage} from './barrage.js';
+import {BlockGame,botScoreAt,BOT_DIFFICULTIES,resolveWinner,WIDTH,HEIGHT} from './engine.js?v=023';
+import {BARRAGE_INTERVAL_MS,leadState,leadReaction,selectBarrage} from './barrage.js?v=023';
 
 const $=id=>document.getElementById(id);
 const params=new URLSearchParams(location.search);
@@ -12,7 +12,7 @@ const els={
  board:$('board'),next:$('next'),notice:$('notice'),start:$('start'),readyOverlay:$('readyOverlay'),
  score:$('playerScore'),bot:$('botScore'),lines:$('lines'),
  level:$('level'),clock:$('clock'),botRemark:$('botRemark'),
- difficultySelect:$('difficultySelect'),difficultyDescription:$('difficultyDescription'),chatFeed:$('chatFeed'),
+ difficultySelect:$('difficultySelect'),chatFeed:$('chatFeed'),
  endOverlay:$('endOverlay'),endPanel:$('endOverlay').querySelector('.end-panel'),
  endHeading:$('endHeading'),endDetail:$('endDetail'),endLine:$('endLine'),
  endSync:$('endSync'),endReplay:$('endReplay'),endKicker:$('endKicker')
@@ -28,15 +28,9 @@ let priorLead='tie',nextChatAt=BARRAGE_INTERVAL_MS,lastReactionAt=-9000,recentLi
 const fmt=n=>Number(n).toLocaleString('zh-CN');
 const timeFmt=t=>{const s=Math.ceil(Math.max(0,t)/1000);return `${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`;};
 const DIFF_REMARKS={easy:'“先眯一会儿嘛……”',medium:'“这局我要认真了。”',hard:'“逃不掉的，哼哼。”'};
-const DIFF_DESCRIPTIONS={
- easy:'简单 · 犯困的水蜜桃：困得快睁不开眼，只想慢慢陪你玩。',
- medium:'中等 · 认真的娅娅：放块更快，会认真想办法追分。',
- hard:'困难 · 终极邪恶水蜜桃：世界级速度模拟，挑战高手的反应极限。'
-};
 function setDifficultyLocked(locked){els.difficultySelect.disabled=!!locked;}
 function updateDifficulty(){
  els.difficultySelect.value=selectedDifficulty;
- els.difficultyDescription.textContent=DIFF_DESCRIPTIONS[selectedDifficulty];
  els.botRemark.textContent=DIFF_REMARKS[selectedDifficulty];
  setDifficultyLocked(started||finished||busy||!!activeRoom);
 }
@@ -73,7 +67,7 @@ function postChat(kind='idle'){
  const item=document.createElement('div');item.className='chat-msg';
  if(kind!=='idle')item.classList.add('reaction');
  if(kind==='playerOvertake'||kind==='botOvertake')item.classList.add('overtake');
- const name=document.createElement('span');name.className='chat-name';name.textContent='DENIA · 达妮娅';
+ const name=document.createElement('span');name.className='chat-name';name.textContent='达妮娅';
  const content=document.createElement('span');content.textContent=text;
  item.append(name,content);els.chatFeed.append(item);
  while(els.chatFeed.children.length>18)els.chatFeed.children[0].remove();
@@ -161,19 +155,22 @@ async function endGame(){
  const t=msNow();game.advanceTo(t);
  const s=game.snapshot();
  const bot=currentBotScore(s.elapsedMs);
- const winner=s.score>bot?'player':s.score<bot?'bot':'tie';
+ const topOut=!!s.ended;
+ const winner=resolveWinner(s.score,bot,topOut);
+ // Important: add a final live-chat line before marking the round as finished.
+ if(topOut)postChat('topout');
  finished=true;started=false;
- finalResult=Object.freeze({playerScore:s.score,botScore:bot,difficulty:selectedDifficulty,seed:game.seed,winner});
+ finalResult=Object.freeze({playerScore:s.score,botScore:bot,difficulty:selectedDifficulty,seed:game.seed,winner,topOut});
  setDifficultyLocked(true);draw(); // freeze both displayed scores immediately
- outcome(winner,s.score,bot);
+ outcome(winner,s.score,bot,topOut?'方块堆满啦……这局算我赢哦。':'');
  els.endReplay.disabled=!!activeRoom;
  els.endReplay.textContent=activeRoom?'房间已结束':'重新开始 ↗';
  if(!activeRoom){els.endSync.textContent='';return;}
  els.endSync.textContent='正在验证比赛结果……';
  try{
   const data=await request(`/api/rooms/${activeRoom.id}/finish`,'POST',{ticket:activeRoom.ticket,score:s.score,lines:s.lines,elapsedMs:s.elapsedMs,events:actions});
-  finalResult=Object.freeze({...finalResult,playerScore:data.playerScore,botScore:data.botScore,winner:data.winner});
-  draw();outcome(data.winner,data.playerScore,data.botScore);
+  finalResult=Object.freeze({...finalResult,playerScore:data.playerScore,botScore:data.botScore,winner:data.winner,topOut:!!data.topOut});
+  draw();outcome(data.winner,data.playerScore,data.botScore,data.topOut?'方块堆满啦……这局算我赢哦。':'');
   els.endSync.textContent='服务器已复算并记录 · 此阶段尚未发放 QQ 好感度';
  }catch(e){els.endSync.textContent='结果尚未确认：'+e.message;}
 }

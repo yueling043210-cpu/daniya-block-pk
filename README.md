@@ -138,3 +138,12 @@ GitHub Pages 只提供体验游戏，没有真实 QQ 回调，也不涉及好感
 - Each game uses its game seed to generate varied, reproducible opponent scores. The server independently computes the same score.
 - End-of-match winner overlay freezes final scoreboard; no separate bottom status/restart bar.
 - Demo remains local; no QQ / affection integration in this release.
+
+## v0.2.3: compact rose UI and top-out priority
+
+- All live-chat bubbles use one muted dark-rose color and show the name `达妮娅`.
+- The `开始挑战` button has a flat peach-pink fill; the difficulty menu contains only the three persona names.
+- The chat panel expands into the freed space below the compact selector.
+- **Top-out is an immediate loss regardless of player score**, both in the browser and in the API's deterministic replay verification; the result includes `topOut` / `endReason`.
+- A special top-out comment appears in the live chat. Time-limited matches without top-out still compare player and simulated-opponent scores normally.
+- This does not enable QQ rewards. The public browser build remains a local exhibition until a trusted server is deployed.
