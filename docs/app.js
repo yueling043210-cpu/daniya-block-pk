@@ -1,5 +1,5 @@
 import {BlockGame,botScoreAt,BOT_DIFFICULTIES,resolveWinner,WIDTH,HEIGHT} from './engine.js?v=024';
-import {BARRAGE_INTERVAL_MS,leadState,leadReaction,selectBarrage} from './barrage.js?v=024';
+import {BARRAGE_INTERVAL_MS,leadState,leadEvent,selectBarrage} from './barrage.js?v=025';
 
 const $=id=>document.getElementById(id);
 const params=new URLSearchParams(location.search);
@@ -26,7 +26,7 @@ const els={
  level:$('level'),clock:$('clock'),botRemark:$('botRemark'),
  difficultySelect:$('difficultySelect'),chatFeed:$('chatFeed'),
  endOverlay:$('endOverlay'),endPanel:$('endOverlay').querySelector('.end-panel'),
- endHeading:$('endHeading'),endDetail:$('endDetail')
+ endHeading:$('endHeading')
 };
 const cells=[],nextCells=[];
 for(let i=0;i<WIDTH*HEIGHT;i++){const c=document.createElement('div');c.className='cell';els.board.append(c);cells.push(c);}
@@ -36,7 +36,7 @@ let selectedDifficulty=Object.hasOwn(BOT_DIFFICULTIES,params.get('difficulty'))?
 let game=new BlockGame(20261008),started=false,busy=false,finished=false,startClock=0,durationMs=90000,actions=[],activeRoom=null,lastRender=0;
 let finalResult=null;
 let roomClientId=null;
-let priorLead='tie',nextChatAt=BARRAGE_INTERVAL_MS,lastReactionAt=-9000,recentLines=[];
+let priorLead='tie',lastDecisiveLead='tie',nextChatAt=BARRAGE_INTERVAL_MS,lastReactionAt=-9000,recentLines=[];
 const fmt=n=>Number(n).toLocaleString('zh-CN');
 const timeFmt=t=>{const s=Math.ceil(Math.max(0,t)/1000);return `${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`;};
 const DIFF_REMARKS={easy:'“先眯一会儿嘛……”',medium:'“这局我要认真了。”',hard:'“逃不掉的，哼哼。”'};
@@ -70,10 +70,10 @@ function draw(){
  els.clock.textContent=timeFmt(durationMs-s.elapsedMs);
 }
 function resetChat(){
- els.chatFeed.replaceChildren();recentLines=[];priorLead='tie';lastReactionAt=-9000;nextChatAt=BARRAGE_INTERVAL_MS;
+ els.chatFeed.replaceChildren();recentLines=[];priorLead='tie';lastDecisiveLead='tie';lastReactionAt=-9000;nextChatAt=BARRAGE_INTERVAL_MS;
 }
-function postChat(kind='idle'){
- if(!started||finished)return;
+function postChat(kind='idle',{force=false}={}){
+ if((!started||finished)&&!force)return;
  const text=selectBarrage(kind,Math.random,recentLines);
  recentLines.push(text);if(recentLines.length>8)recentLines.shift();
  const item=document.createElement('div');item.className='chat-msg';
@@ -89,9 +89,10 @@ function postChat(kind='idle'){
 function processChat(t,playerScore,botScore){
  const lead=leadState(playerScore,botScore);
  if(priorLead!==lead){
-  const kind=leadReaction(priorLead,lead);
+  const kind=leadEvent(priorLead,lead,lastDecisiveLead);
   if(kind&&t>=1500&&t-lastReactionAt>=4000){postChat(kind);lastReactionAt=t;}
   priorLead=lead;
+  if(lead!=='tie')lastDecisiveLead=lead;
  }
  if(t>=nextChatAt){
   const category=lead==='player'?'playerLead':lead==='bot'?'botLead':'idle';
@@ -157,13 +158,17 @@ function tick(){
  if(t>=durationMs||game.ended){endGame();return;}
  requestAnimationFrame(tick);
 }
-function outcome(winner,player,bot,detail=''){
+function outcome(winner){
+ // The scoreboard already shows the two scores; the centered ending modal only shows the result.
  const title=winner==='player'?'玩家获胜！':winner==='bot'?'达妮娅获胜！':'双方平局！';
  els.endOverlay.classList.remove('hidden');
  els.endPanel.className='end-panel '+(winner==='player'?'winner-player':winner==='bot'?'winner-bot':'');
  els.endHeading.textContent=title;
- els.endDetail.textContent=`玩家 ${fmt(player)} 分 · 达妮娅 ${fmt(bot)} 分`;
-
+}
+function postEndingBarrage(winner,topOut){
+ // One ending category per match. Top-out overrides ordinary winner chatter.
+ const kind=topOut?'topout':winner==='player'?'playerWin':winner==='bot'?'botWin':null;
+ if(kind)postChat(kind,{force:true});
 }
 async function endGame(){
  if(finished)return;
@@ -172,25 +177,23 @@ async function endGame(){
  const bot=currentBotScore(s.elapsedMs);
  const topOut=!!s.ended;
  const winner=resolveWinner(s.score,bot,topOut);
- // Important: add a final live-chat line before marking the round as finished.
- if(topOut)postChat('topout');
+ // For online rooms, delay the terminal line until the server validates the match.
  finished=true;started=false;
  finalResult=Object.freeze({playerScore:s.score,botScore:bot,difficulty:selectedDifficulty,seed:game.seed,winner,topOut});
  setDifficultyLocked(true);draw(); // freeze both displayed scores immediately
- outcome(winner,s.score,bot);
- if(!activeRoom)return;
+ outcome(winner);
+ if(!activeRoom){postEndingBarrage(winner,topOut);return;}
  setNotice('正在上传比赛结果……');
  try{
   const data=await request(`/api/rooms/${activeRoom.id}/finish`,'POST',{ticket:activeRoom.ticket,clientId:roomClientId,score:s.score,lines:s.lines,elapsedMs:s.elapsedMs,events:actions});
   finalResult=Object.freeze({...finalResult,playerScore:data.playerScore,botScore:data.botScore,winner:data.winner,topOut:!!data.topOut});
-  draw();outcome(data.winner,data.playerScore,data.botScore);
+  draw();outcome(data.winner);postEndingBarrage(data.winner,!!data.topOut);
   setNotice('比赛结果已上传并通过复算（QQ 反馈尚未接入）。','success');
  }catch(e){
   const invalid=/multiple browser|multiple.*session|room not in progress|room.*invalid|room expired|already finished/i.test(e.message);
   els.endPanel.className='end-panel';
   els.endHeading.textContent=invalid?'本局无效':'成绩未确认';
-  els.endDetail.textContent=invalid?'检测到多人访问或房间失效，比分不计入正式成绩。':'无法确认成绩已上传，比分不计入正式成绩。';
-  setNotice('比赛结果未被服务器接受：'+e.message,'error');
+  setNotice((invalid?'检测到多人访问或房间失效，比分不计入正式成绩。':'无法确认成绩已上传，比分不计入正式成绩。')+' 原因：'+e.message,'error');
  }
 }
 els.difficultySelect.addEventListener('change',()=>{

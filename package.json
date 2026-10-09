@@ -1,9 +1,9 @@
 {
   "name": "daniya-block-pk",
-  "version": "0.2.4",
+  "version": "0.2.5",
   "type": "module",
   "private": true,
-  "description": "Daniya Block PK: unified rose livestream bubbles, compact difficulty, single-round result upload, 30-second claim timeout, multi-session invalidation",
+  "description": "Daniya Block PK: 69 authored personality chat lines, unique terminal commentary, single-round verified results and safe 30-second room claim",
   "scripts": {
     "serve": "node server/server.mjs",
     "test": "node --test"

@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import {BARRAGE,BARRAGE_TOTAL,BARRAGE_INTERVAL_MS,leadReaction,leadState,selectBarrage} from '../docs/barrage.js';
+import {BARRAGE,BARRAGE_TOTAL,BARRAGE_INTERVAL_MS,leadReaction,leadState,leadEvent,selectBarrage} from '../docs/barrage.js';
 const page=fs.readFileSync(new URL('../docs/index.html',import.meta.url),'utf8');
 const script=fs.readFileSync(new URL('../docs/app.js',import.meta.url),'utf8');
 const css=fs.readFileSync(new URL('../docs/style.css',import.meta.url),'utf8');
@@ -70,7 +70,9 @@ test('center winner modal freezes result and retains server finish integration',
  assert(script.includes('/finish'));
  assert(script.includes('data.winner'));
  assert(script.includes('const winner=resolveWinner(s.score,bot,topOut)'));
- assert(script.includes("postChat('topout')"));
+ assert(script.includes('postEndingBarrage(winner,topOut)'));
+ assert(!page.includes('id="endDetail"'));
+ assert(!script.includes('els.endDetail')); 
  assert(css.includes('background:#493044'));
  assert(css.includes('background:#f3a2c4'));
  assert(!script.includes('difficultyDescription'));

@@ -31,7 +31,7 @@ test('browser immediately declares bot winner on top-out even while player leads
  assert(!els.endOverlay.classList.contains('hidden'),'top-out should end game immediately');
  assert.equal(els.endHeading.textContent,'达妮娅获胜！');
  assert.equal(els.endLine.textContent,'');
- assert(els.chatFeed.children.some(c=>/堆满|撑不住|棋盘/.test(c.children?.[1]?.textContent||'')),'top-out commentary should be appended');
+ assert(els.chatFeed.children.some(c=>/堆到顶|结束了呀|差一点|有点可惜/.test(c.children?.[1]?.textContent||'')),'top-out commentary should be appended');
  const p=Number(els.playerScore.textContent.replaceAll(',',''));
  const b=Number(els.botScore.textContent.replaceAll(',',''));
  assert(p>b,`repro must show bot wins despite trailing score: ${p}, ${b}`);
