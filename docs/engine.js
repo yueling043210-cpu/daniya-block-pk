@@ -126,9 +126,36 @@ export class BlockGame {
       next:this.next,score:this.score,lines:this.lines,level:this.level,ended:this.ended,elapsedMs:this.elapsedMs};
   }
 }
+// Daniya is a simulated opponent, not a second AI player.
+// A piece settles every 1.5-3 seconds. Scores rise in discrete, reproducible
+// game-like steps: a modest hard/soft drop, sometimes a 1- or 2-line clear.
+// This deterministic schedule is shared by the browser and score-verifying API.
+const BOT_SEED = 0xDA1A2026;
+export function botScoreEventsUntil(ms){
+  const limit=Math.min(3600000,Math.max(0,Number.isFinite(ms)?ms:0));
+  const rand=rand32(BOT_SEED);
+  const events=[];
+  let at=0,score=0,pieces=0;
+  while(at<=limit){
+    // Random, but seeded: the score never changes between these checkpoints.
+    const delay=1500+Math.floor(rand()*1501);
+    at+=delay;
+    if(at>limit)break;
+    pieces++;
+    const hardDrop=8+2*Math.floor(rand()*12); // 8-30 (hard drop: 2 points/cell)
+    const softDrop=Math.floor(rand()*4);       // 0-3 (soft drop: 1 point/cell)
+    let clearBonus=0;
+    if(pieces%23===0)clearBonus=300;           // occasional two-line clear
+    else if(pieces%9===0)clearBonus=100;        // occasional single-line clear
+    const delta=hardDrop+softDrop+clearBonus;
+    score+=delta;
+    events.push({at,delta,score,clearBonus});
+  }
+  return events;
+}
 export function botScoreAt(ms){
-  const s=Math.max(0,ms)/1000;
-  return Math.floor(36*s + Math.floor(s/17)*125 + 60*Math.sin(s/13)**2);
+  const events=botScoreEventsUntil(ms);
+  return events.length?events[events.length-1].score:0;
 }
 export function replay(seed,events,elapsedMs){
   if(!Array.isArray(events)||events.length>3000)throw new Error('Invalid actions');

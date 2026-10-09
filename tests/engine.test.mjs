@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {BlockGame,replay,botScoreAt} from '../docs/engine.js';
+import {BlockGame,replay,botScoreAt,botScoreEventsUntil} from '../docs/engine.js';
 test('seed replay deterministic and scores agree',()=>{
  const seed=12345, game=new BlockGame(seed), events=[];
  const add=(a,t)=>{game.input(a,t);events.push({a,t});};
@@ -20,4 +20,21 @@ test('replay rejects spoofed and out-of-order moves',()=>{
 test('initial state and bot points',()=>{
  const game=new BlockGame(1);assert.equal(game.board.length,20);assert.equal(game.board[0].length,10);
  assert.equal(game.score,0);assert.equal(botScoreAt(0),0);assert(botScoreAt(90000)>0);
+});
+
+test('Daniya scores only every 1.5-3 seconds, with realistic step changes',()=>{
+ const events=botScoreEventsUntil(90000);
+ assert(events.length>=30&&events.length<=60,`Unexpected pieces: ${events.length}`);
+ assert.equal(botScoreAt(0),0);
+ for(let i=0;i<events.length;i++){
+   const event=events[i],prior=i?events[i-1]:{at:0,score:0};
+   assert(event.at-prior.at>=1500&&event.at-prior.at<=3000);
+   assert.equal(botScoreAt(event.at-1),prior.score,'Score must remain still until next drop');
+   assert.equal(botScoreAt(event.at),event.score);
+   assert(event.delta>0&&event.delta<=333,'Score jump must look like plausible block/line points');
+   assert([0,100,300].includes(event.clearBonus));
+   assert.equal(event.score-prior.score,event.delta);
+ }
+ assert(botScoreAt(90000)>300&&botScoreAt(90000)<2200);
+ assert.equal(botScoreAt(90000),botScoreAt(90000),'Both clients reproduce the same result');
 });
