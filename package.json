@@ -1,9 +1,9 @@
 {
   "name": "daniya-block-pk",
-  "version": "0.2.5",
+  "version": "0.2.6",
   "type": "module",
   "private": true,
-  "description": "Daniya Block PK: 69 authored personality chat lines, unique terminal commentary, single-round verified results and safe 30-second room claim",
+  "description": "Balanced deterministic Daniya scoreboard, verified level/line progression, fullscreen-on-start and touch gestures; preserves 69 approved barrage lines",
   "scripts": {
     "serve": "node server/server.mjs",
     "test": "node --test"

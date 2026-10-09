@@ -1,5 +1,6 @@
-import {BlockGame,botScoreAt,BOT_DIFFICULTIES,resolveWinner,WIDTH,HEIGHT} from './engine.js?v=024';
+import {BlockGame,botScoreAt,BOT_DIFFICULTIES,resolveWinner,WIDTH,HEIGHT} from './engine.js?v=026';
 import {BARRAGE_INTERVAL_MS,leadState,leadEvent,selectBarrage} from './barrage.js?v=025';
+import {installTouchControls} from './touch.js?v=026';
 
 const $=id=>document.getElementById(id);
 const params=new URLSearchParams(location.search);
@@ -39,7 +40,13 @@ let roomClientId=null;
 let priorLead='tie',lastDecisiveLead='tie',nextChatAt=BARRAGE_INTERVAL_MS,lastReactionAt=-9000,recentLines=[];
 const fmt=n=>Number(n).toLocaleString('zh-CN');
 const timeFmt=t=>{const s=Math.ceil(Math.max(0,t)/1000);return `${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`;};
-const DIFF_REMARKS={easy:'“先眯一会儿嘛……”',medium:'“这局我要认真了。”',hard:'“逃不掉的，哼哼。”'};
+const DIFF_REMARKS={easy:'好困......让我先眯一会儿。',medium:'“这局我要认真了。”',hard:'“逃不掉的，哼哼。”'};
+function requestImmersiveFullscreen(){
+ // Fullscreen requires a direct user gesture; Safari/iOS may deny this.
+ const root=document.documentElement;
+ if(!root||document.fullscreenElement||typeof root.requestFullscreen!=='function')return;
+ try{Promise.resolve(root.requestFullscreen({navigationUI:'hide'})).catch(()=>{});}catch{}
+}
 function setDifficultyLocked(locked){els.difficultySelect.disabled=!!locked;}
 function updateDifficulty(){
  els.difficultySelect.value=selectedDifficulty;
@@ -141,6 +148,7 @@ async function begin(){
    selectedDifficulty=Object.hasOwn(BOT_DIFFICULTIES,d.difficulty)?d.difficulty:selectedDifficulty;
   }
   game=new BlockGame(seed);actions=[];finished=false;finalResult=null;started=true;resetChat();setNotice('');
+  document.body?.classList?.add('pk-playing');
   els.readyOverlay.classList.add('hidden');els.endOverlay.classList.add('hidden');els.endPanel.className='end-panel';
   startClock=performance.now();lastRender=0;
   updateDifficulty();draw();postChat('idle');requestAnimationFrame(tick);
@@ -202,7 +210,7 @@ els.difficultySelect.addEventListener('change',()=>{
  if(!Object.hasOwn(BOT_DIFFICULTIES,value)){els.difficultySelect.value=selectedDifficulty;return;}
  selectedDifficulty=value;updateDifficulty();draw();
 });
-els.start.addEventListener('click',begin);
+els.start.addEventListener('click',()=>{requestImmersiveFullscreen();void begin();});
 const keymap={ArrowLeft:'left',ArrowRight:'right',ArrowUp:'rotate',ArrowDown:'down',Space:'drop',' ':'drop',a:'left',d:'right',w:'rotate',s:'down'};
 window.addEventListener('keydown',e=>{const action=keymap[e.code]||keymap[e.key];if(action){e.preventDefault();if(e.repeat&&action==='drop')return;apply(action);}});
 for(const action of ['left','right','rotate','down','drop']){
@@ -210,4 +218,7 @@ for(const action of ['left','right','rotate','down','drop']){
  button.addEventListener('pointerdown',e=>{e.preventDefault();apply(action);});
  button.addEventListener('contextmenu',e=>e.preventDefault());
 }
+// Swipe left/right by individual cells; double-tap board to rotate;
+// hold board to soft-drop repeatedly; flick down to hard-drop.
+installTouchControls(els.board,action=>apply(action),()=>started&&!finished&&!busy);
 updateDifficulty();draw();loadRoom();

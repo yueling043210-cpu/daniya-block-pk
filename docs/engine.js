@@ -126,62 +126,40 @@ export class BlockGame {
       next:this.next,score:this.score,lines:this.lines,level:this.level,ended:this.ended,elapsedMs:this.elapsedMs};
   }
 }
-// Daniya is an explicitly simulated opponent, NOT an OpenClaw-controlled player.
-// PPS represents pieces placed each second, separate from the calm 1.5~3s score
-// updates. The 40-line sprint record is a SPEED benchmark, not a score record.
+// Daniya is a seeded *scoreboard opponent*, not a remote player or a record holder.
+// A realistic 2–3s scoreboard cadence is deliberately separate from piece placement.
+// These scores use this game's level-one scoring scale and are gameplay balancing
+// targets, NOT a direct numerical conversion of NES/CTWC championship scores.
 export const BOT_DIFFICULTIES = Object.freeze({
-  easy:   Object.freeze({label:'简单', minPps:0.18, maxPps:0.30, seed:0xDA1A0101}),
-  medium: Object.freeze({label:'中等', minPps:0.46, maxPps:0.72, seed:0xDA1A0202}),
-  hard:   Object.freeze({label:'困难 · 世界级速度模拟', minPps:6.20, maxPps:6.80, seed:0xDA1A0303})
+  easy:   Object.freeze({label:'简单', minScorePerMinute:550, maxScorePerMinute:790, seed:0xDA1A0101}),
+  medium: Object.freeze({label:'中等', minScorePerMinute:1400, maxScorePerMinute:1950, seed:0xDA1A0202}),
+  hard:   Object.freeze({label:'困难', minScorePerMinute:3250, maxScorePerMinute:4400, seed:0xDA1A0303})
 });
 export const BOT_DIFFICULTY_NAMES = Object.freeze(Object.keys(BOT_DIFFICULTIES));
 const BOT_MAX_MS = 180000; // matches the maximum permitted server room duration
-const BOT_SCORES = [0,100,300,500,800]; // same level-1 line-clear table as BlockGame
 const cachedBotEvents=new Map();
 function buildBotEvents(difficulty,matchSeed=0){
-  const cfg=BOT_DIFFICULTIES[difficulty];
   if(!Object.hasOwn(BOT_DIFFICULTIES,difficulty))throw new Error('Unknown bot difficulty');
-  // Match seed changes between rounds, but stays identical for the browser and replay server.
+  const cfg=BOT_DIFFICULTIES[difficulty];
   const rand=rand32((cfg.seed ^ (Number(matchSeed)>>>0))>>>0);
+  const targetPerMinute=cfg.minScorePerMinute+
+    (cfg.maxScorePerMinute-cfg.minScorePerMinute)*rand();
+  // Each round's skill varies, with gently changing periods of focus/fatigue.
+  // Seeded on both client and server to make score verification identical.
+  let periodFactor=0.95+0.10*rand();
+  let at=0,score=0;
   const events=[];
-  let at=0,score=0,totalPieces=0,totalLines=0;
-  let carry=0,fill=0,waitingLines=0;
-  let groupTarget=chooseGroup();
-  function chooseGroup(){
-    const q=rand();
-    if(difficulty==='easy') return q<0.91?1:2;
-    if(difficulty==='medium')return q<0.50?1:q<0.85?2:q<0.97?3:4;
-    return q<0.12?1:q<0.32?2:q<0.53?3:4;
-  }
   while(true){
-    // Presentation ticks only; more than one piece can settle in a tick.
-    const delay=1500+Math.floor(rand()*1501);
+    const delay=1900+Math.floor(rand()*901); // strictly 1.9–2.8 seconds
     at+=delay;
     if(at>BOT_MAX_MS)break;
-    const pps=cfg.minPps+(cfg.maxPps-cfg.minPps)*rand();
-    carry+=pps*delay/1000;
-    const settled=Math.floor(carry);carry-=settled;
-    let delta=0,clearBonus=0,clearedNow=0;
-    for(let i=0;i<settled;i++){
-      totalPieces++;
-      // Drop points use the player's 2/cell hard-drop + 1/cell soft-drop scale.
-      delta+=2*(4+Math.floor(rand()*12))+Math.floor(rand()*3);
-      // Approximate productive cell placements; a line needs 10 occupied cells.
-      const placement= difficulty==='easy' ? 2.25+0.50*rand()
-        : difficulty==='medium' ? 2.95+0.45*rand()
-        : 3.55+0.35*rand();
-      fill+=placement;
-      while(fill>=10){fill-=10;waitingLines++;}
-      while(waitingLines>=groupTarget){
-        const level=1+Math.floor(totalLines/10);
-        const earned=BOT_SCORES[groupTarget]*level;
-        delta+=earned;clearBonus+=earned;
-        waitingLines-=groupTarget;totalLines+=groupTarget;clearedNow+=groupTarget;
-        groupTarget=chooseGroup();
-      }
+    if(events.length%5===0){
+      periodFactor=0.91+0.18*rand();
     }
+    const factor=(0.78+0.44*rand())*periodFactor;
+    const delta=Math.max(1,Math.round(targetPerMinute*delay/60000*factor));
     score+=delta;
-    events.push({at,delta,score,clearBonus,settled,pieces:totalPieces,lines:totalLines,clearedNow});
+    events.push({at,delta,score});
   }
   return events;
 }
