@@ -46,7 +46,7 @@ test('full local communication: create, start, replay score, poll, acknowledge',
    assert.equal(r.status,200,JSON.stringify(r.data));
    assert.equal(r.data.playerScore,game.score);
    assert.equal(r.data.replayChecked,true);
-   assert.equal(r.data.botScore,botScoreAt(5000,'medium'));
+   assert.equal(r.data.botScore,botScoreAt(5000,'medium',game.seed));
    assert.equal(r.data.affectionEligible,false);
    r=await hit('/api/bridge/results',{headers:auth});
    assert.equal(r.data.matches.length,1);assert.equal(r.data.matches[0].qqId,'2820758373');

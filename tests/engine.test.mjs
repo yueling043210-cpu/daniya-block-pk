@@ -64,3 +64,19 @@ test('Daniya simulation matches line and drop scoring semantics at all difficult
     assert(events.every(e=>Number.isInteger(e.delta)&&e.delta>=0));
   }
 });
+
+test('different rounds have randomized but reproducible opponent scores across all difficulties',()=>{
+ for(const name of BOT_DIFFICULTY_NAMES){
+  const seeds=[1,2,3,4,5,6,7,8];
+  const scores=seeds.map(seed=>botScoreAt(60000,name,seed));
+  assert(new Set(scores).size>=4,`${name} must not be the same final score each round`);
+  assert.equal(botScoreAt(60000,name,8),scores.at(-1));
+  for(const seed of [1,2,3]){
+    const events=botScoreEventsUntil(60000,name,seed);
+    assert(events.every((e,i)=>i===0?e.at>=1500:e.at-events[i-1].at>=1500));
+    assert(events.every((e,i)=>i===0?e.at<=3000:e.at-events[i-1].at<=3000));
+    assert.equal(events.at(-1).score,botScoreAt(60000,name,seed));
+  }
+ }
+ assert.throws(()=>botScoreAt(10,'easy',-1),/seed/i);
+});

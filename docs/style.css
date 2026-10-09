@@ -16,3 +16,28 @@
 @media(max-width:570px){.shell{padding-top:11px}.scoreboard{padding:10px 11px;margin-bottom:10px}.small{font-size:10px;letter-spacing:.6px}.versus{flex-basis:65px}.arena{grid-template-columns:minmax(0,1fr) minmax(108px,31%);gap:8px}.game-card{padding:8px}.board{gap:1px;border-width:5px}.preview-box,.difficulty-drawer{padding:9px}.sidepanel{gap:9px}.next-board{gap:1px;margin:9px auto 1px}.diff-choice{padding:7px}.diff-name{font-size:11px}.diff-top,.diff-description{font-size:10px}.diff-description{line-height:1.5}.board-heading{font-size:9px}.touch{position:sticky;bottom:env(safe-area-inset-bottom);z-index:10;background:#0d1020e8;border:1px solid #303651;padding:7px;margin-left:-3px;margin-right:-3px;border-radius:14px;backdrop-filter:blur(12px)}.touch button{height:55px}.hint{font-size:9px}.actionbar button{padding:12px 10px}.big-score{font-size:clamp(24px,7vw,35px)}.muted{font-size:10px}.danmaku-line{font-size:11px}}
 @media(max-width:370px){.arena{grid-template-columns:minmax(0,1fr) 100px;gap:6px}.preview-box,.difficulty-drawer{padding:7px}.diff-choice{padding:6px}.diff-name{font-size:10px}.diff-description{font-size:9px}.touch{gap:5px}.touch button{height:48px}.end-overlay{padding:5px}.end-panel{padding:10px 7px}.end-panel h2{font-size:20px}}
 @media(prefers-reduced-motion:reduce){.danmaku-line{animation-duration:1ms;animation-fill-mode:both}}
+
+/* v0.2.1: one native dropdown, neutral styling, fixed-height live chat log. */
+.difficulty-drawer{background:#181d32;border:1px solid #303651;box-shadow:none}
+.drawer-heading{display:block;margin-bottom:10px}
+.difficulty-select{width:100%;min-width:0;appearance:auto;border:1px solid #586381;border-radius:9px;padding:11px 8px;background:#202841;color:#eff1ff;font:inherit;font-size:12px;line-height:1.5;cursor:pointer}
+.difficulty-select:focus-visible{outline:2px solid #7ddfd8;outline-offset:2px}
+.difficulty-select:disabled{opacity:.78;cursor:not-allowed;background:#1a2134;color:#c2c9dc}
+.difficulty-description{margin:10px 0 0;line-height:1.6;font-size:11px;color:#b7c5db}
+.chat-panel{border:1px solid #303651;border-radius:14px;background:#181d32;padding:12px;min-width:0;display:flex;flex-direction:column}
+.chat-heading{padding:2px 0 9px;color:#b9c9e5}
+.chat-live-dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:#7ddfd8;vertical-align:middle}
+.chat-feed{height:205px;min-height:150px;max-height:205px;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:#57647f transparent;padding:4px;display:flex;flex-direction:column;gap:7px}
+.chat-msg{flex:none;background:#26334d;border:1px solid #33445e;border-radius:10px 10px 10px 3px;padding:8px 9px;line-height:1.55;color:#e8edff;font-size:12px;overflow-wrap:anywhere;animation:chat-rise .32s ease-out both}
+.chat-msg.reaction{background:#183a40;border-color:#3a6773;color:#b7f2eb}
+.chat-msg.overtake{background:#3e3447;border-color:#716075;color:#ffe4c1}
+.chat-name{font-size:10px;letter-spacing:.4px;color:#80e3dc;font-weight:850;display:block;margin-bottom:3px}
+@keyframes chat-rise{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+.ready-overlay{position:absolute;inset:0;z-index:5;display:grid;place-items:center;background:#0a1220ad;pointer-events:none}
+.ready-start{pointer-events:auto;border:1px solid #efbad2;background:linear-gradient(110deg,#fac8da,#f4a9c7);color:#2d1e37;font-weight:850;padding:16px 25px;border-radius:14px;box-shadow:0 10px 36px #0009}
+.ready-start:disabled{opacity:.45}
+/* Hide obsolete controls and horizontal-over-board danmaku even if cached markup remains. */
+.actionbar,.danmaku-layer{display:none!important}
+@media(max-width:570px){.difficulty-select{padding:8px 4px;font-size:10px}.difficulty-description{font-size:10px;margin-top:7px}.chat-panel{padding:8px}.chat-heading{font-size:9px;letter-spacing:0}.chat-feed{height:180px;max-height:180px;padding:2px;gap:5px}.chat-msg{font-size:10px;padding:7px 5px}.chat-name{font-size:9px}}
+@media(max-width:370px){.difficulty-select{font-size:9px}.chat-feed{height:155px;max-height:155px}.chat-msg{font-size:9px}}
+@media(prefers-reduced-motion:reduce){.chat-msg{animation:none}}

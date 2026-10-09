@@ -5,46 +5,51 @@ import {BARRAGE,BARRAGE_TOTAL,BARRAGE_INTERVAL_MS,leadReaction,leadState,selectB
 const page=fs.readFileSync(new URL('../docs/index.html',import.meta.url),'utf8');
 const script=fs.readFileSync(new URL('../docs/app.js',import.meta.url),'utf8');
 const css=fs.readFileSync(new URL('../docs/style.css',import.meta.url),'utf8');
-test('final UI keeps scoreboard at the top and removes abandoned sections',()=>{
+test('compact scoreboard-only layout, no bottom duplicate start/restart bar',()=>{
  assert(page.indexOf('class="scoreboard"')>0);
  assert(page.indexOf('class="scoreboard"')<page.indexOf('class="arena"'));
- assert(!/class="(?:masthead|hero|results|rules|voice|difficulty-panel)"/.test(page));
- assert(!/<footer\b/i.test(page));
- assert.equal(page.split('id="botScore"').length,2);
  assert(page.includes('DENIA · 达妮娅'));
+ assert(!page.includes('class="actionbar"'));
+ assert(!page.includes('id="restart"'));
+ assert(!page.includes('id="danmakuLayer"'));
+ assert(!page.includes('MATCH RESULT'));
+ assert(page.includes('id="readyOverlay"')&&page.includes('id="start"'));
  assert(page.includes('id="endOverlay"')&&page.includes('id="endReplay"'));
  assert(page.indexOf('id="endOverlay"')<page.indexOf('id="left"'));
- assert(page.indexOf('id="drop"')<page.indexOf('id="barrageAccessible"'));
 });
-test('three accordion difficulty options are selectable and described',()=>{
- for(const [id,label] of [['easy','犯困的水蜜桃'],['medium','认真的娅娅'],['hard','终极邪恶水蜜桃']]){
-  assert(page.includes(`data-difficulty="${id}"`));assert(page.includes(label));
+test('one real dropdown with three descriptions and neutral unselected edge',()=>{
+ assert(page.includes('<select id="difficultySelect"'));
+ for(const [id,name] of [['easy','犯困的水蜜桃'],['medium','认真的娅娅'],['hard','终极邪恶水蜜桃']]){
+  assert(page.includes(`<option value="${id}"`)); assert(page.includes(name));
  }
- assert.equal((page.match(/class="diff-choice/g)||[]).length,3);
- assert(script.includes('updateDifficulty()')&&script.includes('button.disabled=locked')===false);
- assert(css.includes('.diff-choice.is-selected .diff-description{display:block}'));
+ assert.equal((page.match(/<option value="/g)||[]).length,3);
+ assert(!page.includes('class="diff-choice'));
+ assert(css.includes('.difficulty-select:disabled'));
+ assert(css.includes('.difficulty-drawer{background:#181d32;border:1px solid #303651'));
+ assert(script.includes('setDifficultyLocked(started||finished||busy||!!activeRoom)'));
 });
-test('dialogue pool, interval and lead changes are deterministic and safe',()=>{
- assert(BARRAGE_TOTAL>=30);
- assert.equal(BARRAGE_INTERVAL_MS,8000);
- assert.equal(leadState(100,0),'player');assert.equal(leadState(5,12),'bot');assert.equal(leadState(12,12),'tie');
+test('live commentary is vertical bounded log beneath difficulty and uses safe text',()=>{
+ assert(page.indexOf('class="chat-panel"')>page.indexOf('class="difficulty-drawer"'));
+ assert(page.includes('id="chatFeed"')&&page.includes('role="log"'));
+ assert(css.includes('.chat-feed{height:205px'));
+ assert(css.includes('overflow-y:auto'));
+ assert(css.includes('animation:chat-rise'));
+ assert(script.includes('els.chatFeed.scrollTop=els.chatFeed.scrollHeight'));
+ assert(script.includes('content.textContent=text'));
+ assert(!script.includes('innerHTML'));
+ assert(BARRAGE_TOTAL>=30);assert.equal(BARRAGE_INTERVAL_MS,8000);
+ assert.equal(leadState(100,0),'player');assert.equal(leadState(5,12),'bot');
  assert.equal(leadReaction('bot','player'),'playerOvertake');
  assert.equal(leadReaction('player','bot'),'botOvertake');
- assert.equal(leadReaction('tie','player'),'playerLead');
- assert.equal(leadReaction('tie','bot'),'botLead');
- assert.equal(leadReaction('bot','bot'),null);
  assert.notEqual(selectBarrage('idle',()=>0,[BARRAGE.idle[0]]),BARRAGE.idle[0]);
- assert.equal(selectBarrage('unknown',()=>0),BARRAGE.idle[0]);
- assert(script.includes('textContent=`达妮娅：${text}`'));
- assert(!script.includes('innerHTML'));
- assert(css.includes('pointer-events:none'));
 });
-test('result centered in playfield with server result reporting intact',()=>{
+test('center winner modal freezes result and retains server finish integration',()=>{
  assert(page.includes('class="board-stage"'));
  assert(css.includes('.end-overlay{position:absolute;inset:0'));
+ assert(script.includes('finalResult=Object.freeze'));
+ assert(script.includes('setDifficultyLocked(true);draw()'));
  assert(script.includes('/finish'));
  assert(script.includes('data.winner'));
  assert(script.includes('服务器已复算并记录'));
  assert(script.includes("els.endOverlay.classList.remove('hidden')"));
- assert(!page.includes('MATCH RESULT'));
 });

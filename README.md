@@ -129,3 +129,12 @@ GitHub Pages 只提供体验游戏，没有真实 QQ 回调，也不涉及好感
 模拟台词完全在浏览器本地运行，没有调用 AI，不改变比赛积分。新的弹幕选择逻辑在 `docs/barrage.js`，可以编辑其文本池。网站仍属于静态体验版：除非配置自己拥有的 HTTPS 后端与一次性房间链接，否则比赛成绩不会传送至 QQ，也不会发放好感度。
 
 运行 `node --test` 检查旧游戏和服务器兼容性及新版页面逻辑。
+
+
+## v0.2.1 interface update
+
+- Single native difficulty dropdown; disabled during play and after match end.
+- DENIA LIVE chat feed beneath difficulty, bounded height and auto-scrolled every 8 seconds with additional lead-change reactions.
+- Each game uses its game seed to generate varied, reproducible opponent scores. The server independently computes the same score.
+- End-of-match winner overlay freezes final scoreboard; no separate bottom status/restart bar.
+- Demo remains local; no QQ / affection integration in this release.

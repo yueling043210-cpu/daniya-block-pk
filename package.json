@@ -1,9 +1,9 @@
 {
   "name": "daniya-block-pk",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "type": "module",
   "private": true,
-  "description": "Daniya falling block PK with responsive duel UI, local commentary, and replay-checked backend prototype",
+  "description": "Daniya Block PK: seeded opponent, lockable dropdown difficulty, live chat and centered result",
   "scripts": {
     "serve": "node server/server.mjs",
     "test": "node --test"

@@ -138,10 +138,11 @@ export const BOT_DIFFICULTY_NAMES = Object.freeze(Object.keys(BOT_DIFFICULTIES))
 const BOT_MAX_MS = 180000; // matches the maximum permitted server room duration
 const BOT_SCORES = [0,100,300,500,800]; // same level-1 line-clear table as BlockGame
 const cachedBotEvents=new Map();
-function buildBotEvents(difficulty){
+function buildBotEvents(difficulty,matchSeed=0){
   const cfg=BOT_DIFFICULTIES[difficulty];
   if(!Object.hasOwn(BOT_DIFFICULTIES,difficulty))throw new Error('Unknown bot difficulty');
-  const rand=rand32(cfg.seed);
+  // Match seed changes between rounds, but stays identical for the browser and replay server.
+  const rand=rand32((cfg.seed ^ (Number(matchSeed)>>>0))>>>0);
   const events=[];
   let at=0,score=0,totalPieces=0,totalLines=0;
   let carry=0,fill=0,waitingLines=0;
@@ -184,17 +185,23 @@ function buildBotEvents(difficulty){
   }
   return events;
 }
-function eventsFor(difficulty){
+function eventsFor(difficulty,matchSeed=0){
   if(!Object.hasOwn(BOT_DIFFICULTIES,difficulty))throw new Error('Unknown bot difficulty');
-  if(!cachedBotEvents.has(difficulty))cachedBotEvents.set(difficulty,buildBotEvents(difficulty));
-  return cachedBotEvents.get(difficulty);
+  if(!Number.isInteger(matchSeed)||matchSeed<0||matchSeed>0xffffffff)throw new Error('Invalid bot match seed');
+  const key=difficulty+':'+matchSeed;
+  if(!cachedBotEvents.has(key)){
+    // Bound memory usage on devices opening many practice rounds.
+    if(cachedBotEvents.size>=32)cachedBotEvents.delete(cachedBotEvents.keys().next().value);
+    cachedBotEvents.set(key,buildBotEvents(difficulty,matchSeed));
+  }
+  return cachedBotEvents.get(key);
 }
-export function botScoreEventsUntil(ms,difficulty='easy'){
+export function botScoreEventsUntil(ms,difficulty='easy',matchSeed=0){
   const limit=Math.min(BOT_MAX_MS,Math.max(0,Number.isFinite(ms)?ms:0));
-  return eventsFor(difficulty).filter(e=>e.at<=limit);
+  return eventsFor(difficulty,matchSeed).filter(e=>e.at<=limit);
 }
-export function botScoreAt(ms,difficulty='easy'){
-  const events=eventsFor(difficulty);
+export function botScoreAt(ms,difficulty='easy',matchSeed=0){
+  const events=eventsFor(difficulty,matchSeed);
   const limit=Math.min(BOT_MAX_MS,Math.max(0,Number.isFinite(ms)?ms:0));
   let low=0,high=events.length;
   while(low<high){const mid=(low+high)>>>1;if(events[mid].at<=limit)low=mid+1;else high=mid;}

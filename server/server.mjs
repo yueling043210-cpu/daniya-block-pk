@@ -120,7 +120,7 @@ const server=http.createServer(async(req,res)=>{
         try{reconstructed=replay(room.seed,events,elapsedMs);}catch(e){return bad(res,422,'Cannot replay actions: '+e.message);}
         if(reconstructed.score!==score||reconstructed.lines!==lines)return bad(res,422,'Score mismatch with action replay');
         if(!reconstructed.ended&&elapsedMs<room.durationMs-700)return bad(res,422,'Match not completed');
-        const botScore=botScoreAt(elapsedMs,room.difficulty||'easy');
+        const botScore=botScoreAt(elapsedMs,room.difficulty||'easy',room.seed);
         const winner=score>botScore?'player':score<botScore?'bot':'tie';
         room.result={playerScore:score,lines,botScore,winner,elapsedMs,actionCount:events.length,replayChecked:true,
           qqIdentityVerified:false,affectionEligible:false};
