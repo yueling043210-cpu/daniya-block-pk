@@ -25,7 +25,7 @@ test('compact scoreboard-only layout, no bottom duplicate start/restart bar',()=
  assert(!page.includes('MATCH COMPLETE'));
  assert(!page.includes('id="endKicker"'));
  assert(page.includes('>下一块</div>'));
- assert(page.indexOf('id="endOverlay"')<page.indexOf('id="left"'));
+ assert(page.indexOf('id="endOverlay"')<page.indexOf('class="control-guide"')); 
 });
 test('compact difficulty dropdown without explanation',()=>{
  assert(page.includes('<select id="difficultySelect"'));

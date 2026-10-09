@@ -14,7 +14,7 @@ class MockElement {
  querySelector(){return this.endPanel}
 }
 test('dropdown changes only before match; live chat scrolls; final score frozen; no replay after one completed match',async()=>{
- const ids=['board','next','notice','start','readyOverlay','playerScore','botScore','lines','level','clock','botRemark','difficultySelect','chatFeed','endOverlay','endHeading','endDetail','endLine','endSync','endReplay','endKicker','left','right','rotate','down','drop'];
+ const ids=['board','next','notice','start','readyOverlay','playerScore','botScore','lines','level','clock','botRemark','difficultySelect','chatFeed','endOverlay','endHeading','endDetail','endLine','endSync','endReplay','endKicker'];
  const elements=Object.fromEntries(ids.map(k=>[k,new MockElement(k)]));
  elements.endOverlay.endPanel=new MockElement('end-panel');
  globalThis.document={getElementById:id=>elements[id],createElement:()=>new MockElement()};

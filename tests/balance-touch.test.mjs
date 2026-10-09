@@ -49,11 +49,11 @@ test('all difficulty score curves grow gradually every 1.9–2.8s with stable se
   assert.throws(()=>botScoreAt(12000,'__proto__'),/Unknown/);
 });
 
-test('board gestures: double tap rotates, swipe shifts cells, hold soft-drops, down flick hard-drops',()=>{
+test('touch controls separate long hold and slow drag from quick flick hard drop',()=>{
   let n=1000,intervalFn=null,timeoutFn=null;
   const out=[];
   const handlers={};
-  const board={clientWidth:300,addEventListener:(name,fn)=>handlers[name]=fn,setPointerCapture(){},removeEventListener(){}};
+  const board={clientWidth:300,clientHeight:600,addEventListener:(name,fn)=>handlers[name]=fn,setPointerCapture(){},removeEventListener(){}};
   const dispose=installTouchControls(board,a=>out.push(a),()=>true,{
     now:()=>n,
     setTimeout:fn=>{timeoutFn=fn;return 1;},clearTimeout:()=>{timeoutFn=null;},
@@ -62,15 +62,20 @@ test('board gestures: double tap rotates, swipe shifts cells, hold soft-drops, d
   const fire=(kind,x,y,id=1)=>handlers[kind]({pointerType:'touch',pointerId:id,clientX:x,clientY:y,preventDefault(){}});
   fire('pointerdown',100,100); n+=45;fire('pointerup',100,100);
   n+=180;fire('pointerdown',102,101);n+=30;fire('pointerup',102,101);
-  assert.deepEqual(out,['rotate']);
+  assert.deepEqual(out,['rotate'],'double tap rotates once');
   n+=500;fire('pointerdown',110,100);fire('pointermove',192,100);fire('pointerup',192,100);
   assert.equal(out.filter(x=>x==='right').length,3);
   n+=500;fire('pointerdown',180,100);fire('pointermove',96,100);fire('pointerup',96,100);
   assert.equal(out.filter(x=>x==='left').length,4);
-  n+=500;fire('pointerdown',120,100);n+=300;timeoutFn();intervalFn();intervalFn();fire('pointerup',120,100);
-  assert.equal(out.filter(x=>x==='down').length,3);
-  n+=500;fire('pointerdown',100,30);fire('pointermove',100,140);fire('pointerup',100,140);
-  assert.equal(out.at(-1),'drop');
+  n+=500;fire('pointerdown',120,100);n+=320;timeoutFn();intervalFn();intervalFn();fire('pointerup',120,100);
+  assert.equal(out.filter(x=>x==='down').length,3,'hold gives repeated soft drop');
+  n+=500;fire('pointerdown',100,30);n+=100;fire('pointermove',100,145);fire('pointerup',100,145);
+  assert.equal(out.at(-1),'drop','quick downward flick locks piece at bottom');
+  const drops=out.filter(x=>x==='drop').length;
+  const softs=out.filter(x=>x==='down').length;
+  n+=500;fire('pointerdown',100,30);n+=190;fire('pointermove',100,95);n+=100;fire('pointermove',100,160);fire('pointerup',100,160);
+  assert.equal(out.filter(x=>x==='drop').length,drops,'slow downward drag must not hard drop');
+  assert(out.filter(x=>x==='down').length>softs,'slow downward drag soft drops');
   const len=out.length;fire('pointerdown',100,100);fire('pointercancel',100,100);assert.equal(out.length,len);
   dispose();
 });

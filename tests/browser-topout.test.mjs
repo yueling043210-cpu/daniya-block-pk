@@ -13,11 +13,11 @@ class MockElement {
  querySelector(){return this.endPanel}
 }
 test('browser immediately declares bot winner on top-out even while player leads',async()=>{
- const names=['board','next','notice','start','readyOverlay','playerScore','botScore','lines','level','clock','botRemark','difficultySelect','chatFeed','endOverlay','endHeading','endDetail','endLine','endSync','endReplay','endKicker','left','right','rotate','down','drop'];
+ const names=['board','next','notice','start','readyOverlay','playerScore','botScore','lines','level','clock','botRemark','difficultySelect','chatFeed','endOverlay','endHeading','endDetail','endLine','endSync','endReplay','endKicker'];
  const els=Object.fromEntries(names.map(id=>[id,new MockElement(id)]));
  els.endOverlay.endPanel=new MockElement('end-panel');
  globalThis.document={getElementById:id=>els[id],createElement:()=>new MockElement()};
- globalThis.window={PK_CONFIG:{},addEventListener:()=>{}};
+ globalThis.window={PK_CONFIG:{},listeners:{},addEventListener(type,fn){this.listeners[type]=fn;}};
  globalThis.location={search:'',hostname:'test.local'};
  let now=0;globalThis.performance={now:()=>now};
  globalThis.requestAnimationFrame=()=>{};
@@ -26,7 +26,7 @@ test('browser immediately declares bot winner on top-out even while player leads
  let tries=0;
  while(els.endOverlay.classList.contains('hidden')&&tries++<70){
   now+=100;
-  els.drop.listeners.pointerdown({preventDefault(){}});
+  globalThis.window.listeners.keydown({key:' ',code:'Space',repeat:false,preventDefault(){}});
  }
  assert(!els.endOverlay.classList.contains('hidden'),'top-out should end game immediately');
  assert.equal(els.endHeading.textContent,'达妮娅获胜！');

@@ -1,9 +1,9 @@
 {
   "name": "daniya-block-pk",
-  "version": "0.2.6",
+  "version": "0.2.7",
   "type": "module",
   "private": true,
-  "description": "Balanced deterministic Daniya scoreboard, verified level/line progression, fullscreen-on-start and touch gestures; preserves 69 approved barrage lines",
+  "description": "Mobile swipe and hold gestures, inline control guide and standard browser layout; no automatic fullscreen or button pad; retains score, room verification and 69 approved barrage lines",
   "scripts": {
     "serve": "node server/server.mjs",
     "test": "node --test"
