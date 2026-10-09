@@ -14,7 +14,7 @@ class MockElement {
  querySelector(){return this.endPanel}
 }
 test('dropdown changes only before match; live chat scrolls; final score frozen; restart from centered popup',async()=>{
- const ids=['board','next','notice','start','readyOverlay','gameStatus','playerScore','botScore','lines','level','clock','botRemark','difficultySelect','difficultyDescription','chatFeed','endOverlay','endHeading','endDetail','endLine','endSync','endReplay','endKicker','left','right','rotate','down','drop'];
+ const ids=['board','next','notice','start','readyOverlay','playerScore','botScore','lines','level','clock','botRemark','difficultySelect','difficultyDescription','chatFeed','endOverlay','endHeading','endDetail','endLine','endSync','endReplay','endKicker','left','right','rotate','down','drop'];
  const elements=Object.fromEntries(ids.map(k=>[k,new MockElement(k)]));
  elements.endOverlay.endPanel=new MockElement('end-panel');
  globalThis.document={getElementById:id=>elements[id],createElement:()=>new MockElement()};
@@ -29,7 +29,7 @@ test('dropdown changes only before match; live chat scrolls; final score frozen;
  assert.equal(elements.difficultySelect.value,'medium');
  assert.match(elements.difficultyDescription.textContent,/认真的娅娅/);
  await elements.start.listeners.click();
- assert.equal(elements.gameStatus.textContent,'PLAYING');
+ assert.equal(elements.start.disabled,true);
  assert.equal(elements.readyOverlay.classList.contains('hidden'),true);
  assert.equal(elements.chatFeed.children.length,1);
  assert.equal(elements.difficultySelect.disabled,true);
@@ -37,9 +37,9 @@ test('dropdown changes only before match; live chat scrolls; final score frozen;
  assert(elements.chatFeed.children.length>=2,'eight second dialogue');
  assert.equal(elements.chatFeed.scrollTop,elements.chatFeed.scrollHeight,'chat should scroll to latest');
  virtualNow=90000;nextFrame();
- assert.equal(elements.gameStatus.textContent,'FINISHED');
+ assert.equal(elements.difficultySelect.disabled,true);
  assert(elements.endHeading.textContent.includes('获胜')||elements.endHeading.textContent.includes('平局'));
- assert(elements.endSync.textContent.includes('本地体验'));
+ assert.equal(elements.endSync.textContent,'');
  assert.equal(elements.endReplay.disabled,false);
  const displayedBot=elements.botScore.textContent,displayedPlayer=elements.playerScore.textContent;
  elements.difficultySelect.value='hard';elements.difficultySelect.listeners.change();
@@ -48,7 +48,7 @@ test('dropdown changes only before match; live chat scrolls; final score frozen;
  assert.equal(elements.playerScore.textContent,displayedPlayer,'player final score must be frozen');
  assert.equal(elements.difficultySelect.disabled,true);
  await elements.endReplay.listeners.click();
- assert.equal(elements.gameStatus.textContent,'PLAYING');
+ assert.equal(elements.start.disabled,true);
  assert.equal(elements.difficultySelect.value,'medium','replay retains difficulty');
  assert.equal(elements.endOverlay.classList.contains('hidden'),true);
  assert.equal(elements.chatFeed.children.length,1,'replay gets a clean chat');

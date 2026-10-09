@@ -10,7 +10,7 @@ const canCallApi=!!(apiBase||isLocal);
 const apiPath=path=>(apiBase||'')+path;
 const els={
  board:$('board'),next:$('next'),notice:$('notice'),start:$('start'),readyOverlay:$('readyOverlay'),
- status:$('gameStatus'),score:$('playerScore'),bot:$('botScore'),lines:$('lines'),
+ score:$('playerScore'),bot:$('botScore'),lines:$('lines'),
  level:$('level'),clock:$('clock'),botRemark:$('botRemark'),
  difficultySelect:$('difficultySelect'),difficultyDescription:$('difficultyDescription'),chatFeed:$('chatFeed'),
  endOverlay:$('endOverlay'),endPanel:$('endOverlay').querySelector('.end-panel'),
@@ -62,7 +62,6 @@ function draw(){
  els.lines.textContent=s.lines;els.level.textContent=s.level;
  els.bot.textContent=fmt(finalResult?.botScore??currentBotScore(s.elapsedMs));
  els.clock.textContent=timeFmt(durationMs-s.elapsedMs);
- els.status.textContent=finished?'FINISHED':started?'PLAYING':'READY';
 }
 function resetChat(){
  els.chatFeed.replaceChildren();recentLines=[];priorLead='tie';lastReactionAt=-9000;nextChatAt=BARRAGE_INTERVAL_MS;
@@ -169,7 +168,7 @@ async function endGame(){
  outcome(winner,s.score,bot);
  els.endReplay.disabled=!!activeRoom;
  els.endReplay.textContent=activeRoom?'房间已结束':'重新开始 ↗';
- if(!activeRoom){els.endSync.textContent='本地体验 · 本局成绩不发送到 QQ';return;}
+ if(!activeRoom){els.endSync.textContent='';return;}
  els.endSync.textContent='正在验证比赛结果……';
  try{
   const data=await request(`/api/rooms/${activeRoom.id}/finish`,'POST',{ticket:activeRoom.ticket,score:s.score,lines:s.lines,elapsedMs:s.elapsedMs,events:actions});

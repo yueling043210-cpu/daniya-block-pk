@@ -131,7 +131,7 @@ GitHub Pages 只提供体验游戏，没有真实 QQ 回调，也不涉及好感
 运行 `node --test` 检查旧游戏和服务器兼容性及新版页面逻辑。
 
 
-## v0.2.1 interface update
+## v0.2.2 interface update
 
 - Single native difficulty dropdown; disabled during play and after match end.
 - DENIA LIVE chat feed beneath difficulty, bounded height and auto-scrolled every 8 seconds with additional lead-change reactions.

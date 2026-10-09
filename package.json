@@ -1,9 +1,9 @@
 {
   "name": "daniya-block-pk",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "type": "module",
   "private": true,
-  "description": "Daniya Block PK: seeded opponent, lockable dropdown difficulty, live chat and centered result",
+  "description": "Daniya Block PK: seeded opponent, larger playfield, bottom-anchored live chat and locked scores",
   "scripts": {
     "serve": "node server/server.mjs",
     "test": "node --test"

@@ -14,6 +14,13 @@ test('compact scoreboard-only layout, no bottom duplicate start/restart bar',()=
  assert(!page.includes('id="danmakuLayer"'));
  assert(!page.includes('MATCH RESULT'));
  assert(page.includes('id="readyOverlay"')&&page.includes('id="start"'));
+ assert(page.includes('>开始挑战</button>'));
+ assert(!page.includes('PLAYFIELD'));
+ assert(!page.includes('id="gameStatus"'));
+ assert(!page.includes('class="hint"'));
+ assert(!page.includes('方向键移动'));
+ assert(!page.includes('开始挑战 ↗'));
+ assert(!page.includes('测试版本')); 
  assert(page.includes('id="endOverlay"')&&page.includes('id="endReplay"'));
  assert(page.indexOf('id="endOverlay"')<page.indexOf('id="left"'));
 });
@@ -31,10 +38,14 @@ test('one real dropdown with three descriptions and neutral unselected edge',()=
 test('live commentary is vertical bounded log beneath difficulty and uses safe text',()=>{
  assert(page.indexOf('class="chat-panel"')>page.indexOf('class="difficulty-drawer"'));
  assert(page.includes('id="chatFeed"')&&page.includes('role="log"'));
- assert(css.includes('.chat-feed{height:205px'));
+ assert(css.includes('.chat-feed>.chat-msg:first-child{margin-top:auto'));
+ assert(css.includes('.chat-panel{flex:1 1 0'));
+ assert(css.includes('.board-stage{width:min(100%,535px)')); 
  assert(css.includes('overflow-y:auto'));
  assert(css.includes('animation:chat-rise'));
  assert(script.includes('els.chatFeed.scrollTop=els.chatFeed.scrollHeight'));
+ assert(!script.includes('gameStatus'));
+ assert(!script.includes('本地体验 · 本局成绩不发送到 QQ')); 
  assert(script.includes('content.textContent=text'));
  assert(!script.includes('innerHTML'));
  assert(BARRAGE_TOTAL>=30);assert.equal(BARRAGE_INTERVAL_MS,8000);

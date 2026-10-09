@@ -6,9 +6,9 @@
   <meta name="theme-color" content="#101425" />
   <meta name="description" content="方块 PK · 达妮娅。与三个难度的模拟对手比拼消行分数。" />
   <title>方块 PK · 达妮娅</title>
-  <link rel="stylesheet" href="./style.css?v=021" />
+  <link rel="stylesheet" href="./style.css?v=022" />
   <script defer src="./config.js"></script>
-  <script type="module" src="./app.js?v=021"></script>
+  <script type="module" src="./app.js?v=022"></script>
 </head>
 <body>
 <main class="shell">
@@ -20,11 +20,10 @@
 
   <section class="arena" aria-label="方块 PK 游戏区">
     <div class="game-card">
-      <div class="board-heading"><span>PLAYFIELD <span class="live-dot"></span></span><span id="gameStatus">READY</span></div>
       <div id="notice" class="status-note hidden" role="status"></div>
       <div class="board-stage">
         <div id="board" class="board" aria-label="10列20行方块棋盘"></div>
-        <div id="readyOverlay" class="ready-overlay"><button id="start" type="button" class="ready-start">开始挑战 ↗</button></div>
+        <div id="readyOverlay" class="ready-overlay"><button id="start" type="button" class="ready-start">开始挑战</button></div>
         <div id="endOverlay" class="end-overlay hidden" role="dialog" aria-modal="false" aria-labelledby="endHeading">
           <div class="end-panel">
             <span class="end-kicker" id="endKicker">MATCH COMPLETE</span>
@@ -36,7 +35,6 @@
           </div>
         </div>
       </div>
-      <p class="hint">方向键移动 · ↑旋转 · 空格直落</p>
     </div>
     <aside class="sidepanel" aria-label="下一块和难度">
       <div class="preview-box"><div class="small">NEXT PIECE</div><div id="next" class="next-board"></div></div>

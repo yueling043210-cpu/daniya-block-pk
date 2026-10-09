@@ -41,3 +41,35 @@
 @media(max-width:570px){.difficulty-select{padding:8px 4px;font-size:10px}.difficulty-description{font-size:10px;margin-top:7px}.chat-panel{padding:8px}.chat-heading{font-size:9px;letter-spacing:0}.chat-feed{height:180px;max-height:180px;padding:2px;gap:5px}.chat-msg{font-size:10px;padding:7px 5px}.chat-name{font-size:9px}}
 @media(max-width:370px){.difficulty-select{font-size:9px}.chat-feed{height:155px;max-height:155px}.chat-msg{font-size:9px}}
 @media(prefers-reduced-motion:reduce){.chat-msg{animation:none}}
+
+/* v0.2.2: expanded playfield and bottom-anchored live chat, stripped interface copy. */
+.shell{width:min(1180px,100%)}
+.arena{grid-template-columns:minmax(0,1fr) minmax(235px,24%);column-gap:12px;align-items:stretch}
+.game-card{justify-content:flex-start;padding:12px 10px}
+.board-stage{width:min(100%,535px)}
+.sidepanel{align-self:stretch;min-height:0;gap:12px}
+.preview-box,.difficulty-drawer,.chat-panel{flex-shrink:0}
+.chat-panel{flex:1 1 0;min-height:200px;overflow:hidden}
+.chat-feed{height:100%;min-height:0;max-height:none;flex:1 1 0;overflow-y:auto;display:flex;flex-direction:column;justify-content:flex-start;scroll-behavior:smooth}
+/* Auto margin absorbs spare space until the feed fills; new bubbles appear at the bottom. */
+.chat-feed>.chat-msg:first-child{margin-top:auto}
+.chat-msg{flex-shrink:0;max-width:100%}
+.ready-start{font-size:17px;padding:15px 26px}
+.end-sync:empty{display:none}
+@media(max-width:570px){
+ .shell{padding:10px 8px calc(16px + env(safe-area-inset-bottom))}
+ .arena{grid-template-columns:minmax(0,1fr) minmax(108px,31%);gap:7px}
+ .game-card{padding:7px 5px}
+ .board-stage{width:100%}
+ .sidepanel{gap:8px}
+ .preview-box,.difficulty-drawer{padding:8px}
+ .chat-panel{min-height:130px;padding:7px}
+ .chat-feed{height:100%;max-height:none;min-height:0;gap:5px}
+ .chat-msg{font-size:10px;padding:6px 5px}
+ .ready-start{font-size:14px;padding:12px 15px}
+}
+@media(max-width:370px){
+ .arena{grid-template-columns:minmax(0,1fr) 100px;gap:5px}
+ .preview-box,.difficulty-drawer{padding:7px}
+ .chat-panel{padding:6px;min-height:110px}
+}
