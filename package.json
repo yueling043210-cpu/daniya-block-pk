@@ -1,9 +1,9 @@
 {
   "name": "daniya-block-pk",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "type": "module",
   "private": true,
-  "description": "Daniya Block PK: unified rose livestream bubbles, compact difficulty, top-out loss on browser and replay server",
+  "description": "Daniya Block PK: unified rose livestream bubbles, compact difficulty, single-round result upload, 30-second claim timeout, multi-session invalidation",
   "scripts": {
     "serve": "node server/server.mjs",
     "test": "node --test"

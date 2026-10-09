@@ -30,6 +30,10 @@ if(fs.existsSync(dbFile)){
 }
 function save(){const tmp=dbFile+'.tmp';fs.writeFileSync(tmp,JSON.stringify(state,null,2));fs.renameSync(tmp,dbFile);}
 const sha=x=>crypto.createHash('sha256').update(String(x)).digest('hex');
+const JOIN_WINDOW_MS=30_000;
+function validClientId(id){return typeof id==='string' && /^[0-9a-f]{48}$/.test(id);}
+function invalidate(room,reason){room.status='invalid';room.invalidReason=reason;room.invalidAt=Date.now();room.result=null;save();console.warn(`[pk-invalid] room=${room.id} reason=${reason}`);}
+
 const makeId=(n)=>crypto.randomBytes(n).toString('base64url');
 const json=(res,status,value,extra={})=>{res.writeHead(status,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store',...extra});res.end(JSON.stringify(value));};
 function bad(res,status,error){return json(res,status,{error});}
@@ -51,7 +55,7 @@ function accessibleRoom(id,ticket){
   return want.length===got.length&&crypto.timingSafeEqual(want,got)?room:null;
 }
 function expired(room){return !room.startedAt&&Date.now()>room.expiresAt;}
-function roomPublic(room){return {id:room.id,playerName:room.playerName,status:expired(room)?'expired':room.status,durationMs:room.durationMs,difficulty:room.difficulty||'easy',createdAt:room.createdAt};}
+function roomPublic(room){return {id:room.id,playerName:room.playerName,status:expired(room)?'expired':room.status,durationMs:room.durationMs,difficulty:room.difficulty||'easy',createdAt:room.createdAt,expiresAt:room.expiresAt};}
 const mime={'.html':'text/html; charset=utf-8','.css':'text/css; charset=utf-8','.js':'text/javascript; charset=utf-8','.png':'image/png','.ico':'image/x-icon'};
 function serveStatic(req,res,url){
   let pathname;
@@ -75,7 +79,7 @@ const server=http.createServer(async(req,res)=>{
   let u;try{u=new URL(req.url,`http://${req.headers.host||'localhost'}`);}catch{return bad(res,400,'Bad URL');}
   const pathname=u.pathname;
   try{
-    if(pathname==='/api/health'&&req.method==='GET')return json(res,200,{ok:true,service:'daniya-block-pk',version:'0.1.3',resultsPending:Object.values(state.rooms).filter(r=>r.status==='finished'&&!r.ackAt).length});
+    if(pathname==='/api/health'&&req.method==='GET')return json(res,200,{ok:true,service:'daniya-block-pk',version:'0.2.4',resultsPending:Object.values(state.rooms).filter(r=>r.status==='finished'&&!r.ackAt).length});
     if(pathname==='/api/rooms'&&req.method==='POST'){
       if(!authorized(req))return bad(res,401,'Bridge authentication required');
       const b=await readJson(req);
@@ -87,11 +91,11 @@ const server=http.createServer(async(req,res)=>{
       const difficulty=String(b.difficulty??'easy');
       if(!Object.hasOwn(BOT_DIFFICULTIES,difficulty))return bad(res,400,'Unknown difficulty (easy/medium/hard)');
       const id=makeId(9),ticket=makeId(32);
-      const room={id,groupId,qqId,playerName:name,seed:crypto.randomBytes(4).readUInt32LE(0),ticketHash:sha(ticket),createdAt:Date.now(),expiresAt:Date.now()+30*60000,durationMs:durationSeconds*1000,difficulty,status:'ready',startedAt:null,finishedAt:null,result:null,ackAt:null};
+      const room={id,groupId,qqId,playerName:name,seed:crypto.randomBytes(4).readUInt32LE(0),ticketHash:sha(ticket),createdAt:Date.now(),expiresAt:Date.now()+JOIN_WINDOW_MS,durationMs:durationSeconds*1000,difficulty,status:'ready',visitorClientHash:null,claimedClientHash:null,invalidReason:null,startedAt:null,finishedAt:null,result:null,ackAt:null};
       state.rooms[id]=room;save();
       const link=new URL(publicGame);link.searchParams.set('room',id);link.searchParams.set('ticket',ticket);
-      console.log(`[pk-room] created room=${id} group=${groupId} qq=${qqId} difficulty=${difficulty}`);
-      return json(res,201,{id,roomUrl:link.toString(),ticket,publicApi,durationMs:room.durationMs,difficulty});
+      console.log(`[pk-room] created room=${id} group=${groupId} qq=${qqId} difficulty=${difficulty} joinWindow=30s`);
+      return json(res,201,{id,roomUrl:link.toString(),ticket,publicApi,durationMs:room.durationMs,difficulty,expiresAt:room.expiresAt});
     }
     const roomMatch=pathname.match(/^\/api\/rooms\/([a-zA-Z0-9_-]{8,32})(?:\/(start|finish))?$/);
     if(roomMatch){
@@ -100,22 +104,53 @@ const server=http.createServer(async(req,res)=>{
       const ticket=req.method==='POST'?b.ticket:u.searchParams.get('ticket');
       const room=accessibleRoom(id,ticket);
       if(!room)return bad(res,404,'Room not found or invalid ticket');
-      if(expired(room))return bad(res,410,'Room expired');
-      if(!action&&req.method==='GET')return json(res,200,roomPublic(room));
+      if(expired(room))return bad(res,410,'Room expired (30 second join window)');
+      if(!action&&req.method==='GET'){
+        // Explicit browser client id indicates a real page visit. Unidentified
+        // crawler/link-preview GETs are ignored and never reserve the room.
+        const visitingClient=u.searchParams.get('clientId');
+        if(visitingClient!==null && (room.status==='ready'||room.status==='playing')){
+          if(!validClientId(visitingClient))return bad(res,400,'Invalid browser session');
+          const visitorHash=sha(visitingClient);
+          if(room.visitorClientHash && room.visitorClientHash!==visitorHash){
+            invalidate(room,'multiple_browser_sessions');
+            return bad(res,409,'Multiple browser sessions: this match is invalid');
+          }
+          if(!room.visitorClientHash){room.visitorClientHash=visitorHash;save();}
+        }
+        return json(res,200,roomPublic(room));
+      }
       if(action==='start'&&req.method==='POST'){
-        if(room.status!=='ready')return bad(res,409,'Room already started or finished');
-        room.status='playing';room.startedAt=Date.now();save();
-        console.log(`[pk-room] started room=${id}`);
+        if(!validClientId(b.clientId))return bad(res,400,'Missing or invalid browser session');
+        if(room.status==='playing'){
+          if(room.claimedClientHash!==sha(b.clientId)){
+            invalidate(room,'multiple_browser_sessions');
+            return bad(res,409,'Multiple browser sessions: this match is invalid');
+          }
+          return bad(res,409,'Room already started in this session');
+        }
+        if(room.status!=='ready')return bad(res,409,'Room already finished or invalid');
+        if(room.visitorClientHash && room.visitorClientHash!==sha(b.clientId)){
+          invalidate(room,'multiple_browser_sessions');return bad(res,409,'Multiple browser sessions: this match is invalid');
+        }
+        room.visitorClientHash=sha(b.clientId);
+        room.claimedClientHash=sha(b.clientId);room.status='playing';room.startedAt=Date.now();save();
+        console.log(`[pk-room] started room=${id} single-browser=locked`);
         return json(res,200,{id,seed:room.seed,durationMs:room.durationMs,difficulty:room.difficulty||'easy'});
       }
       if(action==='finish'&&req.method==='POST'){
-        if(room.status!=='playing')return bad(res,409,'Room not in progress');
+        if(room.status!=='playing')return bad(res,409,'Room not in progress or invalid');
+        if(!validClientId(b.clientId))return bad(res,400,'Missing or invalid browser session');
+        if(sha(b.clientId)!==room.claimedClientHash){
+          invalidate(room,'multiple_browser_sessions');
+          return bad(res,409,'Multiple browser sessions: this match is invalid');
+        }
         const {score,lines,elapsedMs,events}=b;
         if(!Number.isInteger(elapsedMs)||elapsedMs<0||elapsedMs>room.durationMs||!Number.isInteger(score)||score<0||!Number.isInteger(lines)||lines<0)return bad(res,422,'Invalid submitted score');
         // Time-of-day check. Prevent a client instantly claiming an elapsed 90-second game.
         const serverElapsed=Date.now()-room.startedAt;
         if(elapsedMs>serverElapsed+2800)return bad(res,422,'Client clock ahead of server');
-        if(serverElapsed>room.durationMs+10*60000)return bad(res,410,'Match reporting timeout');
+        if(serverElapsed>room.durationMs+45_000)return bad(res,410,'Match reporting timeout');
         let reconstructed;
         try{reconstructed=replay(room.seed,events,elapsedMs);}catch(e){return bad(res,422,'Cannot replay actions: '+e.message);}
         if(reconstructed.score!==score||reconstructed.lines!==lines)return bad(res,422,'Score mismatch with action replay');
@@ -124,7 +159,7 @@ const server=http.createServer(async(req,res)=>{
         const topOut=!!reconstructed.ended;
         const winner=resolveWinner(score,botScore,topOut);
         room.result={playerScore:score,lines,botScore,winner,topOut,endReason:topOut?'topout':'timeout',elapsedMs,actionCount:events.length,replayChecked:true,
-          qqIdentityVerified:false,affectionEligible:false};
+          qqIdentityVerified:false,affectionEligible:false,claimSessionVerified:true};
         room.finishedAt=Date.now();room.status='finished';save();
         console.log(`[pk-result] room=${id} group=${room.groupId} qq=${room.qqId} score=${score} bot=${botScore} replay=ok`);
         return json(res,200,room.result);

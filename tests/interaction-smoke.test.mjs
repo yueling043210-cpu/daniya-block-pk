@@ -13,7 +13,7 @@ class MockElement {
  setAttribute(name,value){this.attrs[name]=value}
  querySelector(){return this.endPanel}
 }
-test('dropdown changes only before match; live chat scrolls; final score frozen; restart from centered popup',async()=>{
+test('dropdown changes only before match; live chat scrolls; final score frozen; no replay after one completed match',async()=>{
  const ids=['board','next','notice','start','readyOverlay','playerScore','botScore','lines','level','clock','botRemark','difficultySelect','chatFeed','endOverlay','endHeading','endDetail','endLine','endSync','endReplay','endKicker','left','right','rotate','down','drop'];
  const elements=Object.fromEntries(ids.map(k=>[k,new MockElement(k)]));
  elements.endOverlay.endPanel=new MockElement('end-panel');
@@ -39,16 +39,14 @@ test('dropdown changes only before match; live chat scrolls; final score frozen;
  assert.equal(elements.difficultySelect.disabled,true);
  assert(elements.endHeading.textContent.includes('获胜')||elements.endHeading.textContent.includes('平局'));
  assert.equal(elements.endSync.textContent,'');
- assert.equal(elements.endReplay.disabled,false);
+ assert.equal(elements.endReplay.listeners.click,undefined);
  const displayedBot=elements.botScore.textContent,displayedPlayer=elements.playerScore.textContent;
  elements.difficultySelect.value='hard';elements.difficultySelect.listeners.change();
  assert.equal(elements.difficultySelect.value,'medium','ended match must reject change');
  assert.equal(elements.botScore.textContent,displayedBot,'bot final score must be frozen');
  assert.equal(elements.playerScore.textContent,displayedPlayer,'player final score must be frozen');
  assert.equal(elements.difficultySelect.disabled,true);
- await elements.endReplay.listeners.click();
- assert.equal(elements.start.disabled,true);
- assert.equal(elements.difficultySelect.value,'medium','replay retains difficulty');
- assert.equal(elements.endOverlay.classList.contains('hidden'),true);
- assert.equal(elements.chatFeed.children.length,1,'replay gets a clean chat');
+
+ assert.equal(elements.difficultySelect.value,'medium','completed match is immutable');
+ assert.equal(elements.endOverlay.classList.contains('hidden'),false,'result remains displayed');
 });

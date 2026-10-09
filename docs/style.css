@@ -94,3 +94,12 @@
  .chat-panel{min-height:160px}
 }
 @media(max-width:370px){.chat-panel{min-height:130px}}
+
+/* v0.2.4: finished means finished; no replay. Cross-browser explicit black label. */
+.ready-start,.ready-start:hover:not(:disabled),.ready-start:active:not(:disabled),.ready-start:focus-visible{
+ color:#0b0509!important;-webkit-text-fill-color:#0b0509!important;
+ opacity:1;appearance:none;-webkit-appearance:none;
+ font-weight:900;text-shadow:none;
+}
+.end-panel{padding:clamp(18px,3vw,28px) 12px}
+.end-panel h2{margin:3px 0 12px}

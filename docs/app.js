@@ -1,5 +1,5 @@
-import {BlockGame,botScoreAt,BOT_DIFFICULTIES,resolveWinner,WIDTH,HEIGHT} from './engine.js?v=023';
-import {BARRAGE_INTERVAL_MS,leadState,leadReaction,selectBarrage} from './barrage.js?v=023';
+import {BlockGame,botScoreAt,BOT_DIFFICULTIES,resolveWinner,WIDTH,HEIGHT} from './engine.js?v=024';
+import {BARRAGE_INTERVAL_MS,leadState,leadReaction,selectBarrage} from './barrage.js?v=024';
 
 const $=id=>document.getElementById(id);
 const params=new URLSearchParams(location.search);
@@ -7,6 +7,18 @@ const roomId=params.get('room'),ticket=params.get('ticket');
 const apiBase=String(window.PK_CONFIG?.API_BASE||'').trim().replace(/\/+$/,'');
 const isLocal=['localhost','127.0.0.1'].includes(location.hostname);
 const canCallApi=!!(apiBase||isLocal);
+function browserSessionId(){
+ // A separate browser tab/device uses a separate claim; previews never claim a room.
+ const key='daniya-pk-room-client-'+String(roomId||'');
+ try {
+  let id=sessionStorage.getItem(key);
+  if(!id){id=Array.from(crypto.getRandomValues(new Uint8Array(24)),b=>b.toString(16).padStart(2,'0')).join('');sessionStorage.setItem(key,id);}
+  return id;
+ }catch{
+  if(!window.__pkTempClient)window.__pkTempClient=Array.from(crypto.getRandomValues(new Uint8Array(24)),b=>b.toString(16).padStart(2,'0')).join('');
+  return window.__pkTempClient;
+ }
+}
 const apiPath=path=>(apiBase||'')+path;
 const els={
  board:$('board'),next:$('next'),notice:$('notice'),start:$('start'),readyOverlay:$('readyOverlay'),
@@ -14,8 +26,7 @@ const els={
  level:$('level'),clock:$('clock'),botRemark:$('botRemark'),
  difficultySelect:$('difficultySelect'),chatFeed:$('chatFeed'),
  endOverlay:$('endOverlay'),endPanel:$('endOverlay').querySelector('.end-panel'),
- endHeading:$('endHeading'),endDetail:$('endDetail'),endLine:$('endLine'),
- endSync:$('endSync'),endReplay:$('endReplay'),endKicker:$('endKicker')
+ endHeading:$('endHeading'),endDetail:$('endDetail')
 };
 const cells=[],nextCells=[];
 for(let i=0;i<WIDTH*HEIGHT;i++){const c=document.createElement('div');c.className='cell';els.board.append(c);cells.push(c);}
@@ -24,6 +35,7 @@ const SHAPES={I:[[0,1],[1,1],[2,1],[3,1]],O:[[1,0],[2,0],[1,1],[2,1]],T:[[1,0],[
 let selectedDifficulty=Object.hasOwn(BOT_DIFFICULTIES,params.get('difficulty'))?params.get('difficulty'):'easy';
 let game=new BlockGame(20261008),started=false,busy=false,finished=false,startClock=0,durationMs=90000,actions=[],activeRoom=null,lastRender=0;
 let finalResult=null;
+let roomClientId=null;
 let priorLead='tie',nextChatAt=BARRAGE_INTERVAL_MS,lastReactionAt=-9000,recentLines=[];
 const fmt=n=>Number(n).toLocaleString('zh-CN');
 const timeFmt=t=>{const s=Math.ceil(Math.max(0,t)/1000);return `${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`;};
@@ -98,9 +110,11 @@ async function loadRoom(){
  if(!ticket){setNotice('房间链接缺少票据。请从 QQ 中打开完整链接。','error');els.start.disabled=true;return;}
  if(!canCallApi){setNotice('尚未配置在线比赛服务器，无法进入此房间。','error');els.start.disabled=true;return;}
  try{
-  const data=await request(`/api/rooms/${encodeURIComponent(roomId)}?ticket=${encodeURIComponent(ticket)}`);
-  if(data.status==='finished'||data.status==='expired'){
-   setNotice(data.status==='finished'?'此房间已结算，不能重复提交。':'比赛房间已过期，请重新创建。','error');els.start.disabled=true;return;
+  roomClientId=browserSessionId();
+  const data=await request(`/api/rooms/${encodeURIComponent(roomId)}?ticket=${encodeURIComponent(ticket)}&clientId=${encodeURIComponent(roomClientId)}`);
+  if(['finished','expired','invalid','playing'].includes(data.status)){
+   const messages={finished:'此房间已结算。',expired:'30 秒入场时间已结束，房间作废。',invalid:'检测到多个游戏会话，本局成绩无效。',playing:'此房间已经被使用。'};
+   setNotice(messages[data.status],'error');els.start.disabled=true;return;
   }
   durationMs=data.durationMs;
   selectedDifficulty=Object.hasOwn(BOT_DIFFICULTIES,data.difficulty)?data.difficulty:'easy';
@@ -120,7 +134,8 @@ async function begin(){
  try{
   let seed=Math.floor(Math.random()*4294967296)>>>0;
   if(activeRoom){
-   const d=await request(`/api/rooms/${activeRoom.id}/start`,'POST',{ticket:activeRoom.ticket});
+   roomClientId ||= browserSessionId();
+   const d=await request(`/api/rooms/${activeRoom.id}/start`,'POST',{ticket:activeRoom.ticket,clientId:roomClientId});
    seed=d.seed;durationMs=d.durationMs;
    selectedDifficulty=Object.hasOwn(BOT_DIFFICULTIES,d.difficulty)?d.difficulty:selectedDifficulty;
   }
@@ -146,9 +161,9 @@ function outcome(winner,player,bot,detail=''){
  const title=winner==='player'?'玩家获胜！':winner==='bot'?'达妮娅获胜！':'双方平局！';
  els.endOverlay.classList.remove('hidden');
  els.endPanel.className='end-panel '+(winner==='player'?'winner-player':winner==='bot'?'winner-bot':'');
- els.endKicker.textContent='MATCH COMPLETE';els.endHeading.textContent=title;
+ els.endHeading.textContent=title;
  els.endDetail.textContent=`玩家 ${fmt(player)} 分 · 达妮娅 ${fmt(bot)} 分`;
- els.endLine.textContent=detail|| (winner==='player'?'诶……真的被你赢了！下次可不一定哦。':winner==='bot'?'哼哼，这一局是我的胜利～':'平手呀，下次一定要分个高下。');
+
 }
 async function endGame(){
  if(finished)return;
@@ -162,24 +177,21 @@ async function endGame(){
  finished=true;started=false;
  finalResult=Object.freeze({playerScore:s.score,botScore:bot,difficulty:selectedDifficulty,seed:game.seed,winner,topOut});
  setDifficultyLocked(true);draw(); // freeze both displayed scores immediately
- outcome(winner,s.score,bot,topOut?'方块堆满啦……这局算我赢哦。':'');
- els.endReplay.disabled=!!activeRoom;
- els.endReplay.textContent=activeRoom?'房间已结束':'重新开始 ↗';
- if(!activeRoom){els.endSync.textContent='';return;}
- els.endSync.textContent='正在验证比赛结果……';
+ outcome(winner,s.score,bot);
+ if(!activeRoom)return;
+ setNotice('正在上传比赛结果……');
  try{
-  const data=await request(`/api/rooms/${activeRoom.id}/finish`,'POST',{ticket:activeRoom.ticket,score:s.score,lines:s.lines,elapsedMs:s.elapsedMs,events:actions});
+  const data=await request(`/api/rooms/${activeRoom.id}/finish`,'POST',{ticket:activeRoom.ticket,clientId:roomClientId,score:s.score,lines:s.lines,elapsedMs:s.elapsedMs,events:actions});
   finalResult=Object.freeze({...finalResult,playerScore:data.playerScore,botScore:data.botScore,winner:data.winner,topOut:!!data.topOut});
-  draw();outcome(data.winner,data.playerScore,data.botScore,data.topOut?'方块堆满啦……这局算我赢哦。':'');
-  els.endSync.textContent='服务器已复算并记录 · 此阶段尚未发放 QQ 好感度';
- }catch(e){els.endSync.textContent='结果尚未确认：'+e.message;}
-}
-function resetRound(){
- if(activeRoom||started||busy)return;
- game=new BlockGame(Math.floor(Math.random()*4294967296)>>>0);
- finished=false;finalResult=null;resetChat();
- els.endOverlay.classList.add('hidden');els.readyOverlay.classList.remove('hidden');els.start.disabled=false;
- updateDifficulty();draw();
+  draw();outcome(data.winner,data.playerScore,data.botScore);
+  setNotice('比赛结果已上传并通过复算（QQ 反馈尚未接入）。','success');
+ }catch(e){
+  const invalid=/multiple browser|multiple.*session|room not in progress|room.*invalid|room expired|already finished/i.test(e.message);
+  els.endPanel.className='end-panel';
+  els.endHeading.textContent=invalid?'本局无效':'成绩未确认';
+  els.endDetail.textContent=invalid?'检测到多人访问或房间失效，比分不计入正式成绩。':'无法确认成绩已上传，比分不计入正式成绩。';
+  setNotice('比赛结果未被服务器接受：'+e.message,'error');
+ }
 }
 els.difficultySelect.addEventListener('change',()=>{
  if(started||finished||activeRoom||busy){els.difficultySelect.value=selectedDifficulty;return;}
@@ -188,7 +200,6 @@ els.difficultySelect.addEventListener('change',()=>{
  selectedDifficulty=value;updateDifficulty();draw();
 });
 els.start.addEventListener('click',begin);
-els.endReplay.addEventListener('click',async()=>{if(activeRoom)return;resetRound();await begin();});
 const keymap={ArrowLeft:'left',ArrowRight:'right',ArrowUp:'rotate',ArrowDown:'down',Space:'drop',' ':'drop',a:'left',d:'right',w:'rotate',s:'down'};
 window.addEventListener('keydown',e=>{const action=keymap[e.code]||keymap[e.key];if(action){e.preventDefault();if(e.repeat&&action==='drop')return;apply(action);}});
 for(const action of ['left','right','rotate','down','drop']){

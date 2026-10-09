@@ -147,3 +147,14 @@ GitHub Pages 只提供体验游戏，没有真实 QQ 回调，也不涉及好感
 - **Top-out is an immediate loss regardless of player score**, both in the browser and in the API's deterministic replay verification; the result includes `topOut` / `endReason`.
 - A special top-out comment appears in the live chat. Time-limited matches without top-out still compare player and simulated-opponent scores normally.
 - This does not enable QQ rewards. The public browser build remains a local exhibition until a trusted server is deployed.
+
+
+## v0.2.4 单局入场与成绩
+
+- 弹窗仅展示中文胜负和双方得分；无再来一局按钮。刷新体验页面可以另玩一局，但已结算的联网房间不可复用。
+- QQ Bridge 生成房间后，30 秒内必须点击开始；否则该房间过期（只限制入场，不截断已开始的 90 秒比赛）。
+- 仅一个浏览器会话可以开始；第二个不同浏览器会话尝试开始或提交会使整局无效，成绩不会进入待处理结果。
+- QQ 浏览器链接预览不会自动占用房间：只有点击开始挑战才会认领。
+- 本地独立比赛服务保存通过复算的玩家/达妮娅分数到 server-data/matches.json，Bridge 可以凭密钥读取。
+- **GitHub Pages 本身不能接收分数；未配置 PUBLIC HTTPS API 的网站仍是本地体验模式，不能向 Windows 上传成绩。**
+- 还没有 QQ 身份认证，比赛结果 `qqIdentityVerified=false` 且 `affectionEligible=false`，不发放正式好感度。

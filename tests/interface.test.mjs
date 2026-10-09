@@ -21,12 +21,15 @@ test('compact scoreboard-only layout, no bottom duplicate start/restart bar',()=
  assert(!page.includes('方向键移动'));
  assert(!page.includes('开始挑战 ↗'));
  assert(!page.includes('测试版本')); 
- assert(page.includes('id="endOverlay"')&&page.includes('id="endReplay"'));
+ assert(page.includes('id="endOverlay"')&&!page.includes('id="endReplay"'));
+ assert(!page.includes('MATCH COMPLETE'));
+ assert(!page.includes('id="endKicker"'));
+ assert(page.includes('>下一块</div>'));
  assert(page.indexOf('id="endOverlay"')<page.indexOf('id="left"'));
 });
 test('compact difficulty dropdown without explanation',()=>{
  assert(page.includes('<select id="difficultySelect"'));
- for(const [id,name] of [['easy','犯困的水蜜桃'],['medium','认真的娅娅'],['hard','邪恶的水蜜桃']]){
+ for(const [id,name] of [['easy','犯困的水蜜桃'],['medium','认真的水蜜桃'],['hard','邪恶的水蜜桃']]){
   assert(page.includes(`<option value="${id}"`)); assert(page.includes(name));
  }
  assert.equal((page.match(/<option value="/g)||[]).length,3);
@@ -71,6 +74,10 @@ test('center winner modal freezes result and retains server finish integration',
  assert(css.includes('background:#493044'));
  assert(css.includes('background:#f3a2c4'));
  assert(!script.includes('difficultyDescription'));
- assert(script.includes('服务器已复算并记录'));
+ assert(css.includes('-webkit-text-fill-color:#0b0509!important'));
+ assert(script.includes('比赛结果已上传并通过复算'));
+ assert(script.includes('本局无效')&&script.includes('多人访问'));
+ assert(script.includes('clientId:roomClientId'));
+ assert(!script.includes('resetRound()'));
  assert(script.includes("els.endOverlay.classList.remove('hidden')"));
 });

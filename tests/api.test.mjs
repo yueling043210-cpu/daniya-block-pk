@@ -29,16 +29,16 @@ test('full local communication: create, start, replay score, poll, acknowledge',
    r=await hit('/api/rooms',{method:'POST',headers:auth,body:JSON.stringify({groupId:'1058380864',qqId:'2820758373',difficulty:'__proto__'})});
    assert.equal(r.status,400,'prototype-based difficulty must be rejected');
    r=await hit('/api/rooms',{method:'POST',headers:auth,body:JSON.stringify({groupId:'1058380864',qqId:'2820758373',playerName:'测试',durationSeconds:5,difficulty:'medium'})});
-   assert.equal(r.status,201);const {id,ticket}=r.data;
+   assert.equal(r.status,201);const {id,ticket}=r.data;const clientId='a'.repeat(48);const secondClientId='b'.repeat(48);assert(Math.abs(r.data.expiresAt-Date.now()-30000)<5000,'join deadline should be ~30 seconds');
    assert(id);assert(ticket);assert(r.data.roomUrl.includes('room='));assert.equal(r.data.difficulty,'medium');
    r=await hit(`/api/rooms/${id}?ticket=${ticket}`);assert.equal(r.data.status,'ready');assert.equal(r.data.difficulty,'medium');
-   r=await hit(`/api/rooms/${id}/start`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({ticket})});
+   r=await hit(`/api/rooms/${id}/start`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({ticket,clientId})});
    assert.equal(r.status,200);assert.equal(r.data.difficulty,'medium');
    const game=new BlockGame(r.data.seed);
    const events=[{a:'left',t:120},{a:'rotate',t:220},{a:'drop',t:450},{a:'right',t:730},{a:'drop',t:1000}];
    for(const x of events)game.input(x.a,x.t);
    game.advanceTo(5000);
-   let payload={ticket,score:game.score+30,lines:game.lines,elapsedMs:5000,events};
+   let payload={ticket,clientId,score:game.score+30,lines:game.lines,elapsedMs:5000,events};
    r=await hit(`/api/rooms/${id}/finish`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
    assert.equal(r.status,422); // tampered score rejected
    await new Promise(res=>setTimeout(res,5250));
@@ -53,13 +53,13 @@ test('full local communication: create, start, replay score, poll, acknowledge',
    const p=await hit('/api/rooms',{method:'POST',headers:auth,body:JSON.stringify({groupId:'1058380864',qqId:'3154665303',durationSeconds:10,difficulty:'easy'})});
    assert.equal(p.status,201);
    const rid=p.data.id,rticket=p.data.ticket;
-   const st=await hit(`/api/rooms/${rid}/start`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({ticket:rticket})});
+   const topClientId='c'.repeat(48);const st=await hit(`/api/rooms/${rid}/start`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({ticket:rticket,clientId:topClientId})});
    assert.equal(st.status,200);
    const top=new BlockGame(st.data.seed), topActions=[];let topMs=0;
    while(!top.ended && topMs<7000){topMs+=100;top.input('drop',topMs);topActions.push({a:'drop',t:topMs});}
    assert(top.ended,'top-out should be reached');
    assert(top.score>botScoreAt(topMs,'easy',top.seed),'player must lead at topout');
-   const topRes=await hit(`/api/rooms/${rid}/finish`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({ticket:rticket,score:top.score,lines:top.lines,elapsedMs:topMs,events:topActions})});
+   const topRes=await hit(`/api/rooms/${rid}/finish`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({ticket:rticket,clientId:topClientId,score:top.score,lines:top.lines,elapsedMs:topMs,events:topActions})});
    assert.equal(topRes.status,200,JSON.stringify(topRes.data));
    assert.equal(topRes.data.winner,'bot');
    assert.equal(topRes.data.topOut,true);
@@ -69,7 +69,20 @@ test('full local communication: create, start, replay score, poll, acknowledge',
    r=await hit(`/api/bridge/results/${id}/ack`,{method:'POST',headers:auth});assert.equal(r.status,200);
    r=await hit(`/api/bridge/results/${rid}/ack`,{method:'POST',headers:auth});assert.equal(r.status,200);
    r=await hit('/api/bridge/results',{headers:auth});assert.equal(r.data.matches.length,0);
-   r=await hit(`/api/rooms/${id}/start`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({ticket})});assert.equal(r.status,409);
-   console.log('PASS API roundtrip, tamper rejection, no affection, Bridge pending/ack');
+   r=await hit(`/api/rooms/${id}/start`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({ticket,clientId})});assert.equal(r.status,409);
+   // Third room: second browser session invalidates entire match without affecting other results.
+   const contested=await hit('/api/rooms',{method:'POST',headers:auth,body:JSON.stringify({groupId:'1058380864',qqId:'530741628',durationSeconds:5})});
+   assert.equal(contested.status,201);
+   const cid=contested.data.id,cticket=contested.data.ticket;
+   const first=await hit(`/api/rooms/${cid}/start`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({ticket:cticket,clientId})});
+   assert.equal(first.status,200);
+   const competitor=await hit(`/api/rooms/${cid}/start`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({ticket:cticket,clientId:secondClientId})});
+   assert.equal(competitor.status,409);
+   const room=await hit(`/api/rooms/${cid}?ticket=${cticket}`);
+   assert.equal(room.data.status,'invalid');
+   const cannotFinish=await hit(`/api/rooms/${cid}/finish`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({ticket:cticket,clientId,score:0,lines:0,elapsedMs:5000,events:[]})});
+   assert.equal(cannotFinish.status,409);
+   const pending=await hit('/api/bridge/results',{headers:auth});assert.equal(pending.data.matches.length,0,'invalidated room must not become a result');
+   console.log('PASS API roundtrip, 30s deadline, two-session invalidation, tamper rejection, no affection, Bridge pending/ack');
  }finally{child.kill();fs.rmSync(isolatedDataDir,{recursive:true,force:true});}
 });
